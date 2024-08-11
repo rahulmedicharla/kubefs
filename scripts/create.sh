@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function default_helper {
+default_helper() {
     echo "${2} is not a valid argument, please follow types below
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
@@ -9,34 +9,59 @@ function default_helper {
     "
 }
 
-function create_api {
-    if [ -z $1 ]; then
-        default_helper
-        return 1;
-    fi
+function_cleaner() {
+    FUNC=$1
+    CURRENT_DIR=$2
+    NAME=$3
 
-    if [ -d "${KUBEFS_ROOT}/$1" ]; then
-        echo "That component already exists, please try a different name"
+    if [ -z $NAME ]; then
+        default_helper
         return 1
     fi
+
+    if [ -d "${KUBEFS_ROOT}/$NAME" ]; then
+        echo "A component with that name already exists, please try a different name"
+        return 1
+    fi
+
+    # call specified function
+    $FUNC $NAME $CURRENT_DIR
+    if [ $? -eq 1 ]; then
+        rm -rf ${KUBEFS_ROOT}/$NAME
+        return 0
+    fi
     
-    TEMPLATE_DIR="/scripts/templates/template-api.conf"
-    mkdir ${KUBEFS_ROOT}/$1
-    (cd ${KUBEFS_ROOT}/$1 && go mod init $1)
-    (cd ${KUBEFS_ROOT}/$1 &&
-        sed -e "s/{{PACKAGE_NAME}}/$1/" \
-        "${TEMPLATE_DIR}" > "${KUBEFS_ROOT}/$1/main.go" )
-    
+    echo "$NAME api was created successfully!"
     return 0
 }
 
-if [! -f "${KUBEFS_ROOT}/manifest.sh" ]; then
+create_api() {
+    NAME=$1
+    CURRENT_DIR=$2
+    PORT=8080
+    ENTRY=main.go
+    SCAFFOLD="scaffold.kubefs"
+
+    mkdir ${KUBEFS_ROOT}/$NAME
+    (cd ${KUBEFS_ROOT}/$NAME && go mod init $NAME)
+    (cd ${KUBEFS_ROOT}/$NAME &&
+        sed -e "s/{{PORT}}/$PORT/" \
+        "$CURRENT_DIR/scripts/templates/template-api.conf" > "${KUBEFS_ROOT}/$NAME/$ENTRY" )
+    
+    (cd ${KUBEFS_ROOT}/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD)
+
+    return 0
+}
+
+
+if [ ! -f "${KUBEFS_ROOT}/manifest.sh" ]; then
     echo "You are not in a valid project folder, please initialize project using kubefs init or look at kubefs --help for more information"
     return 1
 fi
 
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 case $2 in
-    "api") create_api $3;;
+    "api") function_cleaner create_api $SCRIPT_DIR $3;;
     "--help") default_helper;;
     *) default_helper ;;
 esac

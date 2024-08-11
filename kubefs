@@ -62,17 +62,19 @@ function init_project {
     source "`pwd`/manifest.sh"
 }
 
-if [ -f "${KUBEFS_ROOT}/manifest.sh" ]; then
-    source "${KUBEFS_ROOT}/manifest.sh"
+if [ -f "`pwd`/manifest.sh" ]; then
+    source "`pwd`/manifest.sh"
 fi
 
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 case $1 in 
-    "build") source ./scripts/build.sh;;
-    "config") source ./scripts/config.sh;;
-    "create") source ./scripts/create.sh;;
-    "deploy") source ./scripts/deploy.sh;;
+    "build") source ${SCRIPT_DIR}/scripts/build.sh;;
+    "config") source ${SCRIPT_DIR}/scripts/config.sh;;
+    "create") source ${SCRIPT_DIR}/scripts/create.sh;;
+    "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
     "init") init_project $2;;
-    "exec") source ./scripts/exec.sh;;
+    "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
     "--help") default_helper $1;;
     *) default_helper $1;;
 esac
