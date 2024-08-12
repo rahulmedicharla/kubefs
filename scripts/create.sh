@@ -1,10 +1,14 @@
 #!/bin/bash
 
 default_helper() {
-    echo "${2} is not a valid argument, please follow types below
+    if [ $1 -eq 1 ]; then
+        echo "${2} is not a valid argument, please follow types below"
+    fi
+
+    echo "
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
-    kubefs create api <name> - creates a sample GET api called name using golang 
+    kubefs create api <name> - creates a sample GET api called <name> using golang 
     "
 }
 
@@ -14,7 +18,7 @@ create_helper_func() {
     NAME=$3
 
     if [ -z $NAME ]; then
-        default_helper
+        default_helper 1 $NAME
         return 1
     fi
 
@@ -39,16 +43,33 @@ create_api() {
     CURRENT_DIR=$2
     PORT=8080
     ENTRY=main.go
-    SCAFFOLD="scaffold.kubefs"
+    SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
     (cd `pwd`/$NAME && go mod init $NAME)
     sed -e "s/{{PORT}}/$PORT/" \
         "$CURRENT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD)
-    
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "go run $ENTRY"
+
     return 0
+}
+
+
+append_to_manifest() {
+    CURRENT_DIR=`pwd`
+    NAME=$1
+    ENTRY=$2
+    PORT=$3
+    COMMAND=$4
+
+    echo "" >> $CURRENT_DIR/manifest.kubefs && echo "--" >> $CURRENT_DIR/manifest.kubefs
+    echo "name=$NAME" >> $CURRENT_DIR/manifest.kubefs
+    echo "entry=$ENTRY" >> $CURRENT_DIR/manifest.kubefs
+    echo "port=$PORT" >> $CURRENT_DIR/manifest.kubefs
+    echo "command=$COMMAND" >> $CURRENT_DIR/manifest.kubefs
+    echo "--" >> $CURRENT_DIR/manifest.kubefs
 }
 
 main(){
@@ -65,8 +86,8 @@ main(){
 
     case $2 in
         "api") create_helper_func create_api $SCRIPT_DIR $3;;
-        "--help") default_helper;;
-        *) default_helper ;;
+        "--help") default_helper 0;;
+        *) default_helper 1 $3;;
     esac    
 }
 main $@

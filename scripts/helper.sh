@@ -4,3 +4,20 @@ validate_project(){
         return 1
     fi
 }
+
+parse_scaffold(){
+    NAME=$1
+    declare -A scaffold_data
+
+    if [ ! -f "`pwd`/$NAME/scaffold.kubefs" ]; then
+        echo "$NAME is not a valid project, please check the project name or look at kubefs --help for more information"
+        return 1
+    fi
+
+    while IFS='=' read -r key value; do
+        # Process the key-value pair here
+        scaffold_data[$key]=$value
+    done < "`pwd`/$NAME/scaffold.kubefs"
+
+    echo $(declare -p scaffold_data)
+}
