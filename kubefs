@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function default_helper {
+default_helper() {
     echo "${1} is not a valid argument, please follow types below
     kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
 
@@ -9,11 +9,11 @@ function default_helper {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
     kubefs deploy - deploy the build targets onto the cluster!
     kubefs init <project_name> - download all required dependencies & set up configuration files
-    kubefs test - run go components to test your code
+    kubefs test - exec go components to test your code
     "
 }
 
-function init_project {
+init_project() {
     if [ -z $1 ]; then
         default_helper $2
         return 1;
@@ -57,28 +57,25 @@ function init_project {
     fi 
 
     # create project directory && configuration files
-    touch manifest.sh
-    echo "export KUBEFS_NAME=\"$1\"" >> manifest.sh && echo "export KUBEFS_ROOT=\"`pwd`\"" >> manifest.sh
-    source "`pwd`/manifest.sh"
+    touch manifest.kubefs
+    echo "KUBEFS_NAME=$1" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
 }
 
-if [ -f "`pwd`/manifest.sh" ]; then
-    source "`pwd`/manifest.sh"
-fi
+main(){
+    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+    case $1 in
+        "build") source ${SCRIPT_DIR}/scripts/build.sh;;
+        "config") source ${SCRIPT_DIR}/scripts/config.sh;;
+        "create") source ${SCRIPT_DIR}/scripts/create.sh;;
+        "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
+        "init") init_project $2;;
+        "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
+        "--help") default_helper $1;;
+        *) default_helper $1;;
+    esac
+}
 
-
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-case $1 in 
-    "build") source ${SCRIPT_DIR}/scripts/build.sh;;
-    "config") source ${SCRIPT_DIR}/scripts/config.sh;;
-    "create") source ${SCRIPT_DIR}/scripts/create.sh;;
-    "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
-    "init") init_project $2;;
-    "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
-    "--help") default_helper $1;;
-    *) default_helper $1;;
-esac
-
+main $@
 exit 0
 
 

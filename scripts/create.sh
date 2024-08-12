@@ -5,11 +5,10 @@ default_helper() {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
     kubefs create api <name> - creates a sample GET api called name using golang 
-
     "
 }
 
-function_cleaner() {
+create_helper_func() {
     FUNC=$1
     CURRENT_DIR=$2
     NAME=$3
@@ -19,7 +18,7 @@ function_cleaner() {
         return 1
     fi
 
-    if [ -d "${KUBEFS_ROOT}/$NAME" ]; then
+    if [ -d "`pwd`/$NAME" ]; then
         echo "A component with that name already exists, please try a different name"
         return 1
     fi
@@ -27,7 +26,7 @@ function_cleaner() {
     # call specified function
     $FUNC $NAME $CURRENT_DIR
     if [ $? -eq 1 ]; then
-        rm -rf ${KUBEFS_ROOT}/$NAME
+        rm -rf `pwd`/$NAME
         return 0
     fi
     
@@ -42,30 +41,35 @@ create_api() {
     ENTRY=main.go
     SCAFFOLD="scaffold.kubefs"
 
-    mkdir ${KUBEFS_ROOT}/$NAME
-    (cd ${KUBEFS_ROOT}/$NAME && go mod init $NAME)
-    (cd ${KUBEFS_ROOT}/$NAME &&
-        sed -e "s/{{PORT}}/$PORT/" \
-        "$CURRENT_DIR/scripts/templates/template-api.conf" > "${KUBEFS_ROOT}/$NAME/$ENTRY" )
+    mkdir `pwd`/$NAME
+    (cd `pwd`/$NAME && go mod init $NAME)
+    sed -e "s/{{PORT}}/$PORT/" \
+        "$CURRENT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
-    (cd ${KUBEFS_ROOT}/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD)
-
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD)
+    
     return 0
 }
 
+main(){
+    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-if [ ! -f "${KUBEFS_ROOT}/manifest.sh" ]; then
-    echo "You are not in a valid project folder, please initialize project using kubefs init or look at kubefs --help for more information"
-    return 1
-fi
+    # source helper functions 
+    source $SCRIPT_DIR/scripts/helper.sh
+    validate_project
 
-SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-case $2 in
-    "api") function_cleaner create_api $SCRIPT_DIR $3;;
-    "--help") default_helper;;
-    *) default_helper ;;
-esac
+    if [ $? -eq 1 ]; then
+        rm -rf `pwd`/$NAME
+        return 0
+    fi
 
+    case $2 in
+        "api") create_helper_func create_api $SCRIPT_DIR $3;;
+        "--help") default_helper;;
+        *) default_helper ;;
+    esac    
+}
+main $@
 exit 0
 
 
