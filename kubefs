@@ -63,15 +63,18 @@ init_project() {
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-    case $1 in
+
+    command=$1
+    shift
+    case $command in
         "build") source ${SCRIPT_DIR}/scripts/build.sh;;
         "config") source ${SCRIPT_DIR}/scripts/config.sh;;
         "create") source ${SCRIPT_DIR}/scripts/create.sh;;
         "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
-        "init") init_project $2;;
+        "init") init_project $1;;
         "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
-        "--help") default_helper $1;;
-        *) default_helper $1;;
+        "--help") default_helper $command;;
+        *) default_helper $command;;
     esac
 }
 

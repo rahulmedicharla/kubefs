@@ -9,13 +9,36 @@ default_helper() {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
     kubefs create api <name> - creates a sample GET api called <name> using golang 
+
+    optional paramaters:
+        -p <port> - specify the port number for the api
+        -entry <entry_file> - specify the entry file for the api
     "
+}
+
+parse_optional_params(){
+    declare -A opts
+    while getopts "p:e:" opt; do
+        case ${opt} in
+            p)
+                opts["port"]=$OPTARG
+                ;;
+            e)
+                opts["entry"]=$OPTARG
+                ;;
+            \? )
+                echo "Invalid option: $OPTARG" 1>&2
+                ;;
+        esac
+    done
+
+    echo $(declare -p opts)
 }
 
 create_helper_func() {
     FUNC=$1
-    CURRENT_DIR=$2
-    NAME=$3
+    NAME=$2
+    shift 2
 
     if [ -z $NAME ]; then
         default_helper 1 $NAME
@@ -27,8 +50,10 @@ create_helper_func() {
         return 1
     fi
 
+    eval $(parse_optional_params $@)
+
     # call specified function
-    $FUNC $NAME $CURRENT_DIR
+    $FUNC $NAME
     if [ $? -eq 1 ]; then
         rm -rf `pwd`/$NAME
         return 0
@@ -38,17 +63,40 @@ create_helper_func() {
     return 0
 }
 
+validate_port(){
+    CASE=$1
+    if grep -q "$CASE" "`pwd`/manifest.kubefs"; then
+        return 1
+    fi
+    
+    return 0
+}
+
 create_api() {
     NAME=$1
-    CURRENT_DIR=$2
+
     PORT=8080
     ENTRY=main.go
+
+    if [ -n "${opts["port"]}" ]; then
+        PORT=${opts["port"]}
+    fi
+    if [ -n "${opts["entry"]}" ]; then
+        ENTRY=${opts["entry"]}
+    fi    
+
+    validate_port port=$PORT
+    if [ $? -eq 1 ]; then
+        echo "Port $PORT is already in use, please use a different port"
+        return 1
+    fi
+    
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
     (cd `pwd`/$NAME && go mod init $NAME)
     sed -e "s/{{PORT}}/$PORT/" \
-        "$CURRENT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
+        "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD)
     append_to_manifest $NAME $ENTRY $PORT "go run $ENTRY"
@@ -84,10 +132,12 @@ main(){
         return 0
     fi
 
-    case $2 in
-        "api") create_helper_func create_api $SCRIPT_DIR $3;;
+    type=$1
+    shift
+    case $type in
+        "api") create_helper_func create_api $@;;
         "--help") default_helper 0;;
-        *) default_helper 1 $3;;
+        *) default_helper 1 $type;;
     esac    
 }
 main $@

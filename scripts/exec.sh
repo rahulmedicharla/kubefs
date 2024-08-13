@@ -50,14 +50,14 @@ main(){
         return 0
     fi
 
-    case $2 in
+    type=$1
+    case $type in
         "all") exec_all;;
         "--help") default_helper 0;;
-        *) exec_unique $2;;
+        *) exec_unique $type;;
     esac    
 }
 main $@
-exit 0@
 exit 0
 
 
