@@ -1,5 +1,4 @@
 #!/bin/bash
-
 default_helper() {
     if [ $1 -eq 1 ]; then
         echo "${2} is not a valid argument, please follow types below"

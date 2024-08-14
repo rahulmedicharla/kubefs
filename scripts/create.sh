@@ -8,7 +8,9 @@ default_helper() {
     echo "
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
-    kubefs create api <name> - creates a sample GET api called <name> using golang 
+    kubefs create api <name> - creates a sample GET api called <name> using golang
+
+    kubefs create frontend <name> - creates a sample frontend application called <name> using react
 
     optional paramaters:
         -p <port> - specify the port number for the api (default is 8080)
@@ -59,7 +61,7 @@ create_helper_func() {
         return 0
     fi
     
-    echo "$NAME api was created successfully!"
+    echo "$NAME $FUNC was created successfully!"
     return 0
 }
 
@@ -105,6 +107,38 @@ create_api() {
     return 0
 }
 
+create_frontend(){
+    NAME=$1
+
+    PORT=8080
+    ENTRY=App.js
+
+    if [ -n "${opts["port"]}" ]; then
+        PORT=${opts["port"]}
+    fi
+    if [ -n "${opts["entry"]}" ]; then
+        echo "You can't specify an entry file for a frontend application"
+        return 1
+    fi    
+
+    validate_port port=$PORT
+    if [ $? -eq 1 ]; then
+        echo "Port $PORT is already in use, please use a different port"
+        return 1
+    fi
+    
+    SCAFFOLD=scaffold.kubefs
+
+    mkdir `pwd`/$NAME
+    (cd `pwd`/$NAME && npx create-react-app .)
+    sed -e "s/{{PORT}}/$PORT/" \
+        "$SCRIPT_DIR/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/config.env"
+    
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "npm start"
+
+    return 0
+}
 
 append_to_manifest() {
     CURRENT_DIR=`pwd`
@@ -136,6 +170,7 @@ main(){
     shift
     case $type in
         "api") create_helper_func create_api $@;;
+        "frontend") create_helper_func create_frontend $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $type;;
     esac    

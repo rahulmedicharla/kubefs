@@ -4,4 +4,4 @@ build:
 	sudo cp kubefs /usr/local/bin
 
 reset:
-	(cd .. && rm -rf tester && kubefs init tester && kubefs create api test1)
+	(cd .. && rm -rf tester && kubefs init tester && cd tester && kubefs create api test1)

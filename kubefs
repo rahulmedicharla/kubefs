@@ -9,6 +9,7 @@ default_helper() {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
     kubefs deploy - deploy the build targets onto the cluster!
     kubefs init <project_name> - download all required dependencies & set up configuration files
+    kubefs link <frontend_name> <backend_name> - link your local project to the kubefs cli tool
     kubefs test - exec go components to test your code
     "
 }
@@ -22,7 +23,7 @@ init_project() {
     mkdir $1 && cd $1
 
     #Downloading brew if not downloaded
-    echo "Downloading brew..."
+    echo "Verifing homebrew installation..."
     if !(command -v brew &> /dev/null); then
         echo "Installing homebrew package manager..."
         bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)";
@@ -32,7 +33,7 @@ init_project() {
     fi
 
     #Downloading go if not downloaded
-    echo "Downloading go"
+    echo "Verifying go installation..."
     if !(command -v go &> /dev/null); then
         echo "Installing go..."
         mkdir $HOME/go
@@ -45,18 +46,24 @@ init_project() {
 
 
     # prompt to download minikube
-    echo "Downloading minikube"
+    echo "Verifying minikube installation..."
     if !(command -v minikube &> /dev/null); then
-        echo "Please follow these instructions to install minikube
-        https://minikube.sigs.k8s.io/docs/start/"
+        echo "Downloading minikube..."
+        brew install minikube
     fi
 
     # prompt to download docker
-    echo "Downloading docker"
+    echo "Verifying docker installation..."
     if !(command -v docker &> /dev/null); then
-        echo "Please follow these instructions to install docker
-        https://docs.docker.com/engine/install/ubuntu/"
+        echo "Downloading docker..."
+        brew install docker
     fi 
+
+    echo "Verifying node installation..."
+    if !(command -v node &> /dev/null); then
+        echo "Downloading node..."
+        brew install node
+    fi
 
     # create project directory && configuration files
     touch manifest.kubefs
