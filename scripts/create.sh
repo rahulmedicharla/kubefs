@@ -11,8 +11,8 @@ default_helper() {
     kubefs create api <name> - creates a sample GET api called <name> using golang 
 
     optional paramaters:
-        -p <port> - specify the port number for the api
-        -entry <entry_file> - specify the entry file for the api
+        -p <port> - specify the port number for the api (default is 8080)
+        -e <entry_file> - specify the entry file for the api (default is main.go)
     "
 }
 
@@ -96,6 +96,7 @@ create_api() {
     mkdir `pwd`/$NAME
     (cd `pwd`/$NAME && go mod init $NAME)
     sed -e "s/{{PORT}}/$PORT/" \
+        -e "s/{{PROJECT_NAME}}/$NAME/" \
         "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD)
@@ -117,7 +118,6 @@ append_to_manifest() {
     echo "entry=$ENTRY" >> $CURRENT_DIR/manifest.kubefs
     echo "port=$PORT" >> $CURRENT_DIR/manifest.kubefs
     echo "command=$COMMAND" >> $CURRENT_DIR/manifest.kubefs
-    echo "--" >> $CURRENT_DIR/manifest.kubefs
 }
 
 main(){

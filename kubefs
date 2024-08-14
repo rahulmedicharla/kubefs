@@ -19,6 +19,8 @@ init_project() {
         return 1;
     fi
 
+    mkdir $1 && cd $1
+
     #Downloading brew if not downloaded
     echo "Downloading brew..."
     if !(command -v brew &> /dev/null); then
