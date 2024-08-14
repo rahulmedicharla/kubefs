@@ -14,6 +14,42 @@ default_helper() {
     "
 }
 
+declare -a pids
+
+exec_all(){
+    # read manifest.kubefs
+    CURRENT_DIR=`pwd`
+    eval "$(parse_manifest $CURRENT_DIR)"
+
+    for ((i=0; i<${#manifest_data[@]}; i++)); do
+        if [ "${manifest_data[$i]}" == "--" ]; then
+            name=${manifest_data[$i+1]#*=}
+            entry=${manifest_data[$i+2]#*=}
+            port=${manifest_data[$i+3]#*=}
+            command=${manifest_data[$i+4]#*=}
+
+            cd $CURRENT_DIR/$name; $command &
+            pids+=($!)
+            echo "Starting $name on port $port with PID $!"
+        fi
+    done
+
+    wait
+}
+
+cleanup(){
+    echo ""
+    echo "Stopping all background processes..."
+    for pid in "${pids[@]}"; do
+        echo "Stopping PID $pid"
+        kill $pid 2>/dev/null
+    done
+    pids=()
+    exit 0 
+}
+
+trap cleanup SIGINT
+
 exec_unique(){
     NAME=$1
 
@@ -24,7 +60,7 @@ exec_unique(){
         return 1
     fi
 
-    if [ ! -d "$CURRENT_DIR/$NAME" ]; then
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
         default_helper 1 $NAME
         return 1
     fi
@@ -36,7 +72,6 @@ exec_unique(){
     fi
     
 }
-
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
@@ -50,14 +85,15 @@ main(){
         return 0
     fi
 
-    case $2 in
+    type=$1
+    case $type in
         "all") exec_all;;
         "--help") default_helper 0;;
-        *) exec_unique $2;;
+        *) exec_unique $type;;
     esac    
 }
+
 main $@
-exit 0@
 exit 0
 
 

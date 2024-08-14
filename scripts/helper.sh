@@ -5,10 +5,18 @@ validate_project(){
     fi
 }
 
+parse_manifest(){
+    manifest_data=()
+    while IFS= read -r line; do
+        manifest_data+=("$line")
+    done < "$1/manifest.kubefs"
+
+    echo $(declare -p manifest_data)
+}
+
 parse_scaffold(){
     NAME=$1
     declare -A scaffold_data
-
     if [ ! -f "`pwd`/$NAME/scaffold.kubefs" ]; then
         echo "$NAME is not a valid project, please check the project name or look at kubefs --help for more information"
         return 1
