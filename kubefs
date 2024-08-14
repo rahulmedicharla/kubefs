@@ -9,8 +9,7 @@ default_helper() {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
     kubefs deploy - deploy the build targets onto the cluster!
     kubefs init <project_name> - download all required dependencies & set up configuration files
-    kubefs link <frontend_name> <backend_name> - link your local project to the kubefs cli tool
-    kubefs test - exec go components to test your code
+    kubefs exec - exec go components to test your code
     "
 }
 
@@ -65,9 +64,17 @@ init_project() {
         brew install node
     fi
 
+    echo "Verifying jq installation..."
+    if !(command -v jq &> /dev/null); then
+        echo "Downloading jq..."
+        brew install jq
+    fi
+
     # create project directory && configuration files
     touch manifest.kubefs
     echo "KUBEFS_NAME=$1" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
+
+    echo "Successfully created $1 project"
 }
 
 main(){
