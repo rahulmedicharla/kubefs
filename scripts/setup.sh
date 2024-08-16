@@ -11,10 +11,6 @@ default_helper() {
     "
 }
 
-create_doc(){
-    local_id=$1
-
-}
 
 download_dependencies(){
     if pass show kubefs/auth &> /dev/null; then
@@ -100,7 +96,7 @@ init_project() {
     echo "Enter your email to create your kubefs account: "
     read EMAIL
     echo "Enter your password to create your kubefs account: "
-    read PASSWORD
+    read -s PASSWORD
 
     # Check if GPG key exists
     if ! gpg --list-keys | grep -q "pub"; then
@@ -125,23 +121,23 @@ init_project() {
     error_message=$(echo $response | jq -r '.error.message')
     expires_in=($(echo $response | jq -r '.expiresIn'))
     issued_at=$(date +%s)
-    local_id=$(echo $response | jq -r '.localId')
+    uid=$(echo $response | jq -r '.localId')
 
     # Check if account creation was successful
     if [ "$id_token" != "null" ]; then
-        echo ""
-        echo "Account creation successful!"
 
         auth_data=$(jq -n \
         --arg id_token "$id_token" \
-        --arg refresh_token "$refresh_token" \
         --arg expires_in "$expires_in" \
         --arg issued_at "$issued_at" \
-        '{id_token: $id_token, refresh_token: $refresh_token, expires_in: $expires_in, issued_at: $issued_at}')
+        --arg uid "$uid" \
+        --arg refresh_token "$refresh_token" \
+        '{id_token: $id_token, expires_in: $expires_in, issued_at: $issued_at, uid: $uid, refresh_token: $refresh_token}')
 
         echo "$auth_data" | pass insert -m kubefs/auth
 
-        create_doc $local_id
+        echo ""
+        echo "Account creation successful!"
         
     else
         echo "Account creation failed: $error_message"
