@@ -1,96 +1,67 @@
 #!/bin/bash
 
 default_helper() {
-    echo "${1} is not a valid argument, please follow types below
-    kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
+    TYPE=$1
+    if [ $TYPE -eq 1 ]; then
+        echo "$2 is not a valid argument, please follow types below"
+    fi
 
+    echo "kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
+
+    kubefs auth - authenticate into kubefs platform to use features
     kubefs build - create docker images & helm charts for created resources to be deployed onto the clusters
     kubefs config - config login credentials & deployment targets to be used 
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
     kubefs deploy - deploy the build targets onto the cluster!
     kubefs init <project_name> - download all required dependencies & set up configuration files
     kubefs exec - exec go components to test your code
+    kubefs setup - setup kubefs for the first time
     "
 }
 
-init_project() {
-    if [ -z $1 ]; then
-        default_helper $2
-        return 1;
+validate_auth(){
+    if [ -z "$(pass show kubefs/auth 2>/dev/null)" ]; then
+        echo "Please authenticate into kubefs platform using 'kubefs auth' or 'kubefs setup'"
+        return 1
     fi
 
-    mkdir $1 && cd $1
+    auth_data=$(pass show kubefs/auth)
+    echo $auth_data
 
-    #Downloading brew if not downloaded
-    echo "Verifing homebrew installation..."
-    if !(command -v brew &> /dev/null); then
-        echo "Installing homebrew package manager..."
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)";
-        test -d ~/.linuxbrew && eval "$(~/.linuxbrew/bin/brew shellenv)"
-        test -d /home/linuxbrew/.linuxbrew && eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-        echo "eval \"\$($(brew --prefix)/bin/brew shellenv)\"" >> ~/.bashrc
+    if [ $(date +%s) -ge "$(echo $auth_data | jq -r '.expires_at')" ]; then
+        echo "Please authenticate into kubefs platform using kubfes auth"
+        return 1
     fi
 
-    #Downloading go if not downloaded
-    echo "Verifying go installation..."
-    if !(command -v go &> /dev/null); then
-        echo "Installing go..."
-        mkdir $HOME/go
-        echo "" >> ~/.bashrc && echo '''export GOPATH=$HOME/go''' >> ~/.bashrc
-        echo '''export GOROOT="$(brew --prefix golang)/libexec"''' >> ~/.bashrc
-        echo '''export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"''' >> ~/.bashrc
-        source ~/.bashrc
-        brew install go
-    fi
-
-
-    # prompt to download minikube
-    echo "Verifying minikube installation..."
-    if !(command -v minikube &> /dev/null); then
-        echo "Downloading minikube..."
-        brew install minikube
-    fi
-
-    # prompt to download docker
-    echo "Verifying docker installation..."
-    if !(command -v docker &> /dev/null); then
-        echo "Downloading docker..."
-        brew install docker
-    fi 
-
-    echo "Verifying node installation..."
-    if !(command -v node &> /dev/null); then
-        echo "Downloading node..."
-        brew install node
-    fi
-
-    echo "Verifying jq installation..."
-    if !(command -v jq &> /dev/null); then
-        echo "Downloading jq..."
-        brew install jq
-    fi
-
-    # create project directory && configuration files
-    touch manifest.kubefs
-    echo "KUBEFS_NAME=$1" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
-
-    echo "Successfully created $1 project"
+    return 0
 }
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
+    if [ "$1" == "setup" ]; then
+        source ${SCRIPT_DIR}/scripts/setup.sh
+        return 0
+    fi
+
+    validate_auth
+    if [ $? -eq 1 ]; then
+        default_helper 0
+        return 0
+    fi
+
     command=$1
     shift
     case $command in
+        "auth") source ${SCRIPT_DIR}/scripts/auth.sh;;
         "build") source ${SCRIPT_DIR}/scripts/build.sh;;
         "config") source ${SCRIPT_DIR}/scripts/config.sh;;
         "create") source ${SCRIPT_DIR}/scripts/create.sh;;
         "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
-        "init") init_project $1;;
+        "init") source ${SCRIPT_DIR}/scripts/init.sh;;
         "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
-        "--help") default_helper $command;;
-        *) default_helper $command;;
+        "--help") default_helper 0;;
+        *) default_helper 1 $command;;
     esac
 }
 
