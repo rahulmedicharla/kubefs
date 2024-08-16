@@ -26,14 +26,14 @@ validate_auth(){
     fi
 
     auth_data=$(pass show kubefs/auth)
-    echo $auth_data
+    expires_in=$(echo $auth_data | jq -r '.expires_in')
+    issued_at=$(echo $auth_data | jq -r '.issued_at')
+    current_time=$(date +%s)
 
-    if [ $(date +%s) -ge "$(echo $auth_data | jq -r '.expires_at')" ]; then
-        echo "Please authenticate into kubefs platform using kubfes auth"
+    if [ $((current_time)) -ge $((issued_at + expires_in)) ]; then
+        echo "Authentication token has expired. Please authenticate again using 'kubefs auth' or 'kubefs setup'"
         return 1
     fi
-
-    return 0
 }
 
 main(){
@@ -41,6 +41,12 @@ main(){
 
     if [ "$1" == "setup" ]; then
         source ${SCRIPT_DIR}/scripts/setup.sh
+        return 0
+    fi
+
+    if [ "$1" == "auth" ]; then
+        shift
+        source ${SCRIPT_DIR}/scripts/auth.sh
         return 0
     fi
 
@@ -53,7 +59,6 @@ main(){
     command=$1
     shift
     case $command in
-        "auth") source ${SCRIPT_DIR}/scripts/auth.sh;;
         "build") source ${SCRIPT_DIR}/scripts/build.sh;;
         "config") source ${SCRIPT_DIR}/scripts/config.sh;;
         "create") source ${SCRIPT_DIR}/scripts/create.sh;;

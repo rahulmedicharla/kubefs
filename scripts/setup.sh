@@ -11,9 +11,16 @@ default_helper() {
     "
 }
 
-init_project() {
-    SCRIPT_DIR=$1
-    #Downloading brew if not downloaded
+create_doc(){
+    local_id=$1
+
+}
+
+download_dependencies(){
+    if pass show kubefs/auth &> /dev/null; then
+        echo "Already setup kubefs configurations. Use 'kubefs auth login' to login"
+        return 0
+    fi
 
     echo -e "\e[1mSetting up kubefs configurations for the first time...\e[0m"
     echo "Verifying dependencies..."
@@ -74,6 +81,12 @@ init_project() {
         echo "Downloading pass..."
         brew install pass
     fi
+}
+
+init_project() {
+    SCRIPT_DIR=$1
+
+    download_dependencies
 
     if [ ! -f $SCRIPT_DIR/scripts/.env ]; then
         echo "Invalid Firebase API Key, please enter a valid key"
@@ -110,16 +123,25 @@ init_project() {
     id_token=$(echo $response | jq -r '.idToken')
     refresh_token=$(echo $response | jq -r '.refreshToken')
     error_message=$(echo $response | jq -r '.error.message')
-    expires_at=$(($(echo $response | jq -r '.expiresIn') + $(date +%s)))
-
-    echo $expires_at
+    expires_in=($(echo $response | jq -r '.expiresIn'))
+    issued_at=$(date +%s)
+    local_id=$(echo $response | jq -r '.localId')
 
     # Check if account creation was successful
     if [ "$id_token" != "null" ]; then
         echo ""
         echo "Account creation successful!"
 
-        echo -e "id_token: $id_token\nrefresh_token: $refresh_token\nexpires_at: $expires_at" | pass insert -m kubefs/auth
+        auth_data=$(jq -n \
+        --arg id_token "$id_token" \
+        --arg refresh_token "$refresh_token" \
+        --arg expires_in "$expires_in" \
+        --arg issued_at "$issued_at" \
+        '{id_token: $id_token, refresh_token: $refresh_token, expires_in: $expires_in, issued_at: $issued_at}')
+
+        echo "$auth_data" | pass insert -m kubefs/auth
+
+        create_doc $local_id
         
     else
         echo "Account creation failed: $error_message"

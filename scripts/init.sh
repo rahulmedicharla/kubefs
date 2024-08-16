@@ -1,6 +1,17 @@
+default_helper(){
+    TYPE=$1
+    if [ $TYPE -eq 1 ]; then
+        echo "${2} is not a valid argument, please follow types below"
+    fi
+
+    echo "
+    kubefs init <name> - initialize a new kubefs project
+    "
+}
+
 init_project() {
     if [ -z $1 ]; then
-        default_helper $2
+        default_helper 1 $2
         return 1;
     fi
 
