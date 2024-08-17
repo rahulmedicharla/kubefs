@@ -26,28 +26,39 @@ exec_all(){
             entry=${manifest_data[$i+2]#*=}
             port=${manifest_data[$i+3]#*=}
             command=${manifest_data[$i+4]#*=}
-
-            cd $CURRENT_DIR/$name; $command &
-            pids+=($!)
-            echo "Starting $name on port $port with PID $!"
+            type=${manifest_data[$i+5]#*=}
+            
+            cd $CURRENT_DIR/$name; $command 2>/dev/null &
+            pids+=($!:$name:$type)
+            echo "Serving $name on port $port"
         fi
     done
 
-    wait
+    echo "Use Ctrl C. to stop serving all components..."
+
+    exit_flag=0
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
 }
 
 cleanup(){
     echo ""
-    echo "Stopping all background processes..."
-    for pid in "${pids[@]}"; do
-        echo "Stopping PID $pid"
-        kill $pid 2>/dev/null
-    done
-    pids=()
-    exit 0 
-}
+    for pid_info in "${pids[@]}"; do
+        pid=$(echo $pid_info | cut -d ":" -f 1)
+        name=$(echo $pid_info | cut -d ":" -f 2)
+        type=$(echo $pid_info | cut -d ":" -f 3)
 
-trap cleanup SIGINT
+        echo "Stopping $name"
+        if [ $type == "db" ]; then
+            atlas deployment pause $name 2>/dev/null
+        else
+            kill $pid 2>/dev/null
+        fi
+    done
+    exit_flag=1
+    pids=()
+}
 
 exec_unique(){
     NAME=$1
@@ -67,10 +78,20 @@ exec_unique(){
     eval "$(parse_scaffold "$NAME")"
 
     if [ -n "${scaffold_data["command"]}" ]; then
-        (cd $CURRENT_DIR/$NAME && ${scaffold_data["command"]})
+        (cd $CURRENT_DIR/$NAME && ${scaffold_data["command"]} > /dev/null 2>&1) &
+        pids+=($!:$NAME:${scaffold_data["type"]})
     fi
+
+    echo "Serving $NAME on port ${scaffold_data["port"]}"
+    echo "Use Ctrl C. to stop serving $NAME"
     
+    exit_flag=0
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
 }
+
+trap cleanup SIGINT
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"

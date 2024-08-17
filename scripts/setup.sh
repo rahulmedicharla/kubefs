@@ -79,6 +79,29 @@ download_dependencies(){
     fi
 }
 
+create_doc(){
+    id_token=$1
+    apikey=$2
+    uid=$3
+
+    project_name=$(cat $SCRIPT_DIR/scripts/.env | grep KUBEFS_PROJECT_ID | cut -d '=' -f2)
+
+    # Create a new document in Firestore
+    response=$(curl -s -X PATCH "https://firestore.googleapis.com/v1/projects/$project_name/databases/(default)/documents/users/$uid" \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $id_token" \
+        --data-binary '{
+            "fields": {
+                "uid": {
+                    "stringValue": "'"$uid"'"
+                }
+            }
+        }'
+    )
+
+    return 0
+}
+
 init_project() {
     SCRIPT_DIR=$1
 
@@ -136,8 +159,16 @@ init_project() {
 
         echo "$auth_data" | pass insert -m kubefs/auth
 
+        create_doc $id_token $apikey $uid
+
+        if [ $? -eq 1 ]; then
+            echo "Account creation failed. Please try again."
+            return 1
+        fi
+
         echo ""
         echo "Account creation successful!"
+        return 0
         
     else
         echo "Account creation failed: $error_message"

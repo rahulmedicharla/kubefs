@@ -8,8 +8,8 @@ default_helper() {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
     kubefs create api <name> - creates a sample GET api called <name> using golang
-
     kubefs create frontend <name> - creates a sample frontend application called <name> using react
+    kubefs create database <name> - creates a sample database called <name> using atlas
 
     optional paramaters:
         -p <port> - specify the port number for the api (default is 8080)
@@ -73,6 +73,36 @@ validate_port(){
     return 0
 }
 
+create_db(){
+    NAME=$1
+
+    PORT=8080
+
+    if [ -n "${opts["port"]}" ]; then
+        PORT=${opts["port"]}
+    fi
+    if [ -n "${opts["entry"]}" ]; then
+        echo "You can not set the entry file for a database. Please try again."
+    fi    
+
+    validate_port port=$PORT
+    if [ $? -eq 1 ]; then
+        echo "Port $PORT is already in use, please use a different port"
+        return 1
+    fi
+    
+    SCAFFOLD=scaffold.kubefs
+
+    mkdir `pwd`/$NAME
+    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
+    ENTRY=$(echo $output | grep -oP '(?<=Connection string: ).*')
+
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=atlas deployments start $NAME" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "atlas deployments start $NAME" db
+
+    return 0
+}
+
 create_api() {
     NAME=$1
 
@@ -100,8 +130,8 @@ create_api() {
         -e "s/{{PROJECT_NAME}}/$NAME/" \
         "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "go run $ENTRY"
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "go run $ENTRY" api
 
     return 0
 }
@@ -129,12 +159,12 @@ create_frontend(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && npx create-react-app .)
+    (cd `pwd`/$NAME && npx create-react-app . > /dev/null 2>&1)
     sed -e "s/{{PORT}}/$PORT/" \
         "$SCRIPT_DIR/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/config.env"
     
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "npm start"
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
 
     return 0
 }
@@ -145,12 +175,14 @@ append_to_manifest() {
     ENTRY=$2
     PORT=$3
     COMMAND=$4
+    TYPE=$5
 
     echo "" >> $CURRENT_DIR/manifest.kubefs && echo "--" >> $CURRENT_DIR/manifest.kubefs
     echo "name=$NAME" >> $CURRENT_DIR/manifest.kubefs
     echo "entry=$ENTRY" >> $CURRENT_DIR/manifest.kubefs
     echo "port=$PORT" >> $CURRENT_DIR/manifest.kubefs
     echo "command=$COMMAND" >> $CURRENT_DIR/manifest.kubefs
+    echo "type"=$TYPE >> $CURRENT_DIR/manifest.kubefs
 }
 
 main(){
@@ -170,6 +202,7 @@ main(){
     case $type in
         "api") create_helper_func create_api $@;;
         "frontend") create_helper_func create_frontend $@;;
+        "database") create_helper_func create_db $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $type;;
     esac    
