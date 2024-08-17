@@ -28,7 +28,7 @@ exec_all(){
             command=${manifest_data[$i+4]#*=}
             type=${manifest_data[$i+5]#*=}
             
-            cd $CURRENT_DIR/$name; $command 2>/dev/null &
+            cd $CURRENT_DIR/$name; $command > /dev/null 2>&1 &
             pids+=($!:$name:$type)
             echo "Serving $name on port $port"
         fi
