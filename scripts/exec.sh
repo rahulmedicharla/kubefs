@@ -26,14 +26,20 @@ exec_all(){
             entry=${manifest_data[$i+2]#*=}
             port=${manifest_data[$i+3]#*=}
             command=${manifest_data[$i+4]#*=}
-
-            cd $CURRENT_DIR/$name; $command &
-            pids+=($!)
-            echo "Starting $name on port $port with PID $!"
+            type=${manifest_data[$i+5]#*=}
+            
+            cd $CURRENT_DIR/$name; $command 2>/dev/null &
+            pids+=($!:$name:$type)
+            echo "Serving $name on port $port"
         fi
     done
 
-    wait
+    echo "Use Ctrl C. to stop serving all components..."
+
+    exit_flag=0
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
 }
 
 cleanup(){
@@ -45,12 +51,12 @@ cleanup(){
 
         echo "Stopping $name"
         if [ $type == "db" ]; then
-            atlas deployment pause $name
-            exit_flag=1
+            atlas deployment pause $name 2>/dev/null
         else
             kill $pid 2>/dev/null
         fi
     done
+    exit_flag=1
     pids=()
 }
 

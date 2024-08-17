@@ -8,8 +8,8 @@ default_helper() {
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
 
     kubefs create api <name> - creates a sample GET api called <name> using golang
-
     kubefs create frontend <name> - creates a sample frontend application called <name> using react
+    kubefs create database <name> - creates a sample database called <name> using atlas
 
     optional paramaters:
         -p <port> - specify the port number for the api (default is 8080)
