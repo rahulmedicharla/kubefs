@@ -38,16 +38,21 @@ exec_all(){
 
 cleanup(){
     echo ""
-    echo "Stopping all background processes..."
-    for pid in "${pids[@]}"; do
-        echo "Stopping PID $pid"
-        kill $pid 2>/dev/null
+    for pid_info in "${pids[@]}"; do
+        pid=$(echo $pid_info | cut -d ":" -f 1)
+        name=$(echo $pid_info | cut -d ":" -f 2)
+        type=$(echo $pid_info | cut -d ":" -f 3)
+
+        echo "Stopping $name"
+        if [ $type == "db" ]; then
+            atlas deployment pause $name
+            exit_flag=1
+        else
+            kill $pid 2>/dev/null
+        fi
     done
     pids=()
-    exit 0 
 }
-
-trap cleanup SIGINT
 
 exec_unique(){
     NAME=$1
@@ -67,10 +72,20 @@ exec_unique(){
     eval "$(parse_scaffold "$NAME")"
 
     if [ -n "${scaffold_data["command"]}" ]; then
-        (cd $CURRENT_DIR/$NAME && ${scaffold_data["command"]})
+        (cd $CURRENT_DIR/$NAME && ${scaffold_data["command"]} > /dev/null 2>&1) &
+        pids+=($!:$NAME:${scaffold_data["type"]})
     fi
+
+    echo "Serving $NAME on port ${scaffold_data["port"]}"
+    echo "Use Ctrl C. to stop serving $NAME"
     
+    exit_flag=0
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
 }
+
+trap cleanup SIGINT
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
