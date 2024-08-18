@@ -36,6 +36,11 @@ build_unique(){
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$SCRIPT_DIR/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
+        "frontend")
+            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                "$SCRIPT_DIR/scripts/templates/nginx.conf" > "$CURRENT_DIR/$NAME/nginx.conf"
+            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                "$SCRIPT_DIR/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
         *) default_helper 1 "${scaffold_data["type"]}";;
     esac
 
@@ -44,7 +49,9 @@ build_unique(){
 
     echo "$NAME component build successfuly, run using 'kubefs docker exec'"
 
-    echo "docker-run=docker run -p ${scaffold_data["port"]}:${scaffold_data["port"]} $NAME" >> $CURRENT_DIR/$NAME/scaffold.kubefs
+    if [ -z "${scaffold_data["docker-run"]}" ]; then
+        echo "docker-run=docker run -p ${scaffold_data["port"]}:${scaffold_data["port"]} --name $NAME-container $NAME" >> $CURRENT_DIR/$NAME/scaffold.kubefs
+    fi
 
     return 0
 }
@@ -89,7 +96,8 @@ execute_unique(){
 
     echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
     ${scaffold_data["docker-run"]} > /dev/null 2>&1
-    
+
+    wait
     return 0
 }
 
