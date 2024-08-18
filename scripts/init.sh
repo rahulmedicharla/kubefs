@@ -11,8 +11,8 @@ default_helper(){
 
 init_project() {
     if [ -z $1 ]; then
-        default_helper 1 $2
-        return 1;
+        default_helper 0
+        return 0;
     fi
 
     mkdir $1 && cd $1

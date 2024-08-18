@@ -6,7 +6,8 @@ default_helper() {
         echo "$2 is not a valid argument, please follow types below"
     fi
 
-    echo "kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
+    echo "
+    kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
 
     kubefs auth - authenticate into kubefs platform to use features
     kubefs build - create docker images & helm charts for created resources to be deployed onto the clusters
@@ -22,6 +23,7 @@ default_helper() {
 validate_auth(){
     if [ -z "$(pass show kubefs/auth 2>/dev/null)" ]; then
         echo "Please authenticate into kubefs platform using 'kubefs auth' or 'kubefs setup'"
+        echo "use kubefs --help for more information"
         return 1
     fi
 
@@ -36,22 +38,21 @@ validate_auth(){
     fi
 }
 
+source_scripts(){
+    validate_auth
+    if [ $? -eq 1 ]; then
+        default_helper 0
+        return 0
+    fi
+    file_path=$1
+    shift
+    source $file_path
+}
+
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 
-    if [ "$1" == "setup" ]; then
-        source ${SCRIPT_DIR}/scripts/setup.sh
-        return 0
-    fi
-
-    if [ "$1" == "auth" ]; then
-        shift
-        source ${SCRIPT_DIR}/scripts/auth.sh
-        return 0
-    fi
-
-    validate_auth
-    if [ $? -eq 1 ]; then
+    if [ -z "$1" ]; then
         default_helper 0
         return 0
     fi
@@ -59,12 +60,14 @@ main(){
     command=$1
     shift
     case $command in
-        "build") source ${SCRIPT_DIR}/scripts/build.sh;;
-        "config") source ${SCRIPT_DIR}/scripts/config.sh;;
-        "create") source ${SCRIPT_DIR}/scripts/create.sh;;
-        "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
-        "init") source ${SCRIPT_DIR}/scripts/init.sh;;
-        "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
+        "auth") source $SCRIPT_DIR/scripts/auth.sh;;
+        "build") source_scripts ${SCRIPT_DIR}/scripts/build.sh $@;;
+        "config") source_scripts ${SCRIPT_DIR}/scripts/config.sh $@;;
+        "create") source_scripts ${SCRIPT_DIR}/scripts/create.sh $@;;
+        "deploy") source_scripts ${SCRIPT_DIR}/scripts/deploy.sh $@;;
+        "exec") source_scripts ${SCRIPT_DIR}/scripts/exec.sh $@;;
+        "init") source_scripts ${SCRIPT_DIR}/scripts/init.sh $@;;
+        "setup") source $SCRIPT_DIR/scripts/setup.sh;;
         "--help") default_helper 0;;
         *) default_helper 1 $command;;
     esac
