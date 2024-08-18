@@ -40,8 +40,6 @@ build_unique(){
                 "$SCRIPT_DIR/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
         "frontend")
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                "$SCRIPT_DIR/scripts/templates/nginx.conf" > "$CURRENT_DIR/$NAME/nginx.conf"
-            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 "$SCRIPT_DIR/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
         *) default_helper 1 "${scaffold_data["type"]}";;
     esac
@@ -131,7 +129,6 @@ cleanup(){
         echo ""
         echo "Stopping $container..."
         docker stop $container > /dev/null 2>&1
-        # docker rm $container > /dev/null 2>&1
     done
     containers=()
     exit_flag=1

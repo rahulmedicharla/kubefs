@@ -57,6 +57,7 @@ describe_unique(){
     echo "Port:${scaffold_data["port"]}"
     echo "Command:${scaffold_data["command"]}"
     echo "Type:${scaffold_data["type"]}"
+    echo "Docker Run:${scaffold_data["docker-run"]}"
 
 }
 

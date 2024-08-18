@@ -54,6 +54,7 @@ create_helper_func() {
     eval $(parse_optional_params $@)
 
     # call specified function
+    echo "Creating $NAME..."
     $FUNC $NAME
     if [ $? -eq 1 ]; then
         echo "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
@@ -151,11 +152,12 @@ create_api() {
 create_frontend(){
     NAME=$1
 
-    PORT=8080
+    PORT=3000
     ENTRY=App.js
 
     if [ -n "${opts["port"]}" ]; then
-        PORT=${opts["port"]}
+        echo "You can't specify a port for a frontend application"
+        return 1
     fi
     if [ -n "${opts["entry"]}" ]; then
         echo "You can't specify an entry file for a frontend application"
@@ -176,9 +178,6 @@ create_frontend(){
     if [ $? -ne 0 ]; then
         return 1
     fi
-
-    sed -e "s/{{PORT}}/$PORT/" \
-        "$SCRIPT_DIR/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/config.env"
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
     append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
