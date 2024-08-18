@@ -12,15 +12,36 @@ default_helper() {
     "
 }
 
-build_all(){
-
-}
-
 build_unique(){
     NAME=$1
     SCRIPT_DIR=$2
+    CURRENT_DIR=`pwd`
 
-    
+    if [ -z $NAME ]; then
+        default_helper 1 $NAME
+        return 1
+    fi
+
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+        default_helper 1 $NAME
+        return 1
+    fi
+
+    eval "$(parse_scaffold "$NAME")"
+
+    case "${scaffold_data["type"]}" in
+        "api")
+            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{NAME}}/${scaffold_data["name"]}/" \
+                "$SCRIPT_DIR/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
+        *) default_helper 1 "${scaffold_data["type"]}";;
+    esac
+
+    # build docker image
+    cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .
+
+    echo "$NAME component build successfuly, run using 'kubefs exec'"
+    return 0
 }
 
 main(){

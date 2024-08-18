@@ -96,11 +96,12 @@ create_db(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
+    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
 
     if [ $? -ne 0 ]; then
         return 1
     fi
+
     ENTRY=$(echo $output | grep -oP '(?<=Connection string: ).*')
 
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=atlas deployments start $NAME" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD)
@@ -131,14 +132,14 @@ create_api() {
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && go mod init $NAME)
+    (cd `pwd`/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
 
     if [ $? -ne 0 ]; then
         return 1
     fi
 
     sed -e "s/{{PORT}}/$PORT/" \
-        -e "s/{{PROJECT_NAME}}/$NAME/" \
+        -e "s/{{NAME}}/$NAME/" \
         "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
