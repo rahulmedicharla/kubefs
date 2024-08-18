@@ -43,12 +43,12 @@ create_helper_func() {
 
     if [ -z $NAME ]; then
         default_helper 1 $NAME
-        return 1
+        return 0
     fi
 
     if [ -d "`pwd`/$NAME" ]; then
         echo "A component with that name already exists, please try a different name"
-        return 1
+        return 0
     fi
 
     eval $(parse_optional_params $@)
@@ -56,6 +56,7 @@ create_helper_func() {
     # call specified function
     $FUNC $NAME
     if [ $? -eq 1 ]; then
+        echo "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
         rm -rf `pwd`/$NAME
         return 0
     fi
@@ -83,6 +84,7 @@ create_db(){
     fi
     if [ -n "${opts["entry"]}" ]; then
         echo "You can not set the entry file for a database. Please try again."
+        return 1
     fi    
 
     validate_port port=$PORT
@@ -94,7 +96,11 @@ create_db(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
+    (cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
+
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
     ENTRY=$(echo $output | grep -oP '(?<=Connection string: ).*')
 
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=atlas deployments start $NAME" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD)
@@ -126,6 +132,11 @@ create_api() {
 
     mkdir `pwd`/$NAME
     (cd `pwd`/$NAME && go mod init $NAME)
+
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
     sed -e "s/{{PORT}}/$PORT/" \
         -e "s/{{PROJECT_NAME}}/$NAME/" \
         "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
@@ -160,6 +171,11 @@ create_frontend(){
 
     mkdir `pwd`/$NAME
     (cd `pwd`/$NAME && npx create-react-app . > /dev/null 2>&1)
+
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
     sed -e "s/{{PORT}}/$PORT/" \
         "$SCRIPT_DIR/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/config.env"
     

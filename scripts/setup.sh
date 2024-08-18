@@ -18,7 +18,7 @@ download_dependencies(){
         return 0
     fi
 
-    echo -e "\e[1mSetting up kubefs configurations for the first time...\e[0m"
+    echo "Setting up kubefs configurations for the first time..."
     echo "Verifying dependencies..."
 
     if !(command -v brew &> /dev/null); then
