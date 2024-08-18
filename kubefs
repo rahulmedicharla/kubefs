@@ -10,13 +10,13 @@ default_helper() {
     kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
 
     kubefs auth - authenticate into kubefs platform to use features
-    kubefs build - create docker images & helm charts for created resources to be deployed onto the clusters
     kubefs config - config login credentials & deployment targets to be used 
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
+    kubefs docker - create & test docker images for created resources to be deployed onto the clusters
     kubefs deploy - deploy the build targets onto the cluster!
     kubefs describe - describe the information about a construct
     kubefs init <project_name> - download all required dependencies & set up configuration files
-    kubefs exec - exec go components to test your code
+    kubefs exec - execute components to test your code
     kubefs setup - setup kubefs for the first time
     "
 }
@@ -62,11 +62,11 @@ main(){
     shift
     case $command in
         "auth") source $SCRIPT_DIR/scripts/auth.sh;;
-        "build") source_scripts ${SCRIPT_DIR}/scripts/build.sh $@;;
         "config") source_scripts ${SCRIPT_DIR}/scripts/config.sh $@;;
         "create") source_scripts ${SCRIPT_DIR}/scripts/create.sh $@;;
         "deploy") source_scripts ${SCRIPT_DIR}/scripts/deploy.sh $@;;
         "describe") source_scripts ${SCRIPT_DIR}/scripts/describe.sh $@;;
+        "docker") source_scripts ${SCRIPT_DIR}/scripts/docker.sh $@;;
         "exec") source_scripts ${SCRIPT_DIR}/scripts/exec.sh $@;;
         "init") source_scripts ${SCRIPT_DIR}/scripts/init.sh $@;;
         "setup") source $SCRIPT_DIR/scripts/setup.sh;;
