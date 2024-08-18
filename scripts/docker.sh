@@ -14,6 +14,8 @@ default_helper() {
     "
 }
 
+declare -a containers
+
 build_unique(){
     NAME=$1
     SCRIPT_DIR=$2
@@ -97,7 +99,14 @@ execute_unique(){
     echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
     ${scaffold_data["docker-run"]} > /dev/null 2>&1
 
-    wait
+    containers+=($NAME-container)
+
+    exit_flag=0
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
+    
+
     return 0
 }
 
@@ -116,6 +125,20 @@ execute(){
         *) execute_unique $name $SCRIPT_DIR;;
     esac
 }
+
+cleanup(){
+    for container in "${containers[@]}"; do
+        echo ""
+        echo "Stopping $container..."
+        docker stop $container > /dev/null 2>&1
+        # docker rm $container > /dev/null 2>&1
+    done
+    containers=()
+    exit_flag=1
+    exit 0
+}
+
+trap cleanup SIGINT
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
