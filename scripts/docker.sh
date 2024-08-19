@@ -37,20 +37,28 @@ build_unique(){
         "api")
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$SCRIPT_DIR/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
+                "$SCRIPT_DIR/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{NAME}}/${scaffold_data["name"]}/" \
+                "$SCRIPT_DIR/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "frontend")
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                "$SCRIPT_DIR/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile";;
+                "$SCRIPT_DIR/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{NAME}}/${scaffold_data["name"]}/" \
+                "$SCRIPT_DIR/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         *) default_helper 1 "${scaffold_data["type"]}";;
     esac
 
     # build docker image
     cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .
 
-    echo "$NAME component build successfuly, run using 'kubefs docker exec'"
+    echo "$NAME component built successfuly, run using 'kubefs docker exec'"
 
     if [ -z "${scaffold_data["docker-run"]}" ]; then
-        echo "docker-run=docker run -p ${scaffold_data["port"]}:${scaffold_data["port"]} --name $NAME-container $NAME" >> $CURRENT_DIR/$NAME/scaffold.kubefs
+        echo "docker-run=docker compose up" >> $CURRENT_DIR/$NAME/scaffold.kubefs
     fi
 
     return 0
@@ -95,16 +103,7 @@ execute_unique(){
     fi
 
     echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
-    ${scaffold_data["docker-run"]} > /dev/null 2>&1
-
-    containers+=($NAME-container)
-
-    exit_flag=0
-    while [ "$exit_flag" -eq "0" ]; do
-        sleep 1
-    done
-    
-
+    cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]}
     return 0
 }
 
@@ -129,13 +128,14 @@ cleanup(){
         echo ""
         echo "Stopping $container..."
         docker stop $container > /dev/null 2>&1
+        docker rm $container > /dev/null 2>&1
     done
     containers=()
     exit_flag=1
     exit 0
 }
 
-trap cleanup SIGINT
+# trap cleanup SIGINT
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
