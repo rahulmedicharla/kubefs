@@ -43,9 +43,10 @@ build_unique(){
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "frontend")
-            cp "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" "$CURRENT_DIR/$NAME/Dockerfile"
+            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
             sed -e "s/{{HOST_PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{PORT}}/3000/" \
+                -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "db")
@@ -123,7 +124,7 @@ execute_unique(){
     echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
     if [ "${scaffold_data["type"]}" == "db" ]; then
         connection_string="mongodb://user:pass@localhost:${scaffold_data["port"]}/?directConnection=true"
-        echo "Connection String: $connection_string"
+        echo "  Connection String: $connection_string"
     fi
 
     cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]} > /dev/null 2>&1

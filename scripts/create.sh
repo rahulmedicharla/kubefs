@@ -178,7 +178,7 @@ create_frontend(){
         return 1
     fi
 
-    (cd `pwd`/$NAME && echo "PORT=$PORT" >> .env)
+    (cd `pwd`/$NAME && jq ".scripts.start = \"PORT=$PORT react-scripts start\"" package.json > tmp.json && mv tmp.json package.json)
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
     append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
