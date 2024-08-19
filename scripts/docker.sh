@@ -49,6 +49,14 @@ build_unique(){
                 -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$SCRIPT_DIR/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+        "db")
+            cp "$SCRIPT_DIR/scripts/templates/template-db-compose.conf" "$CURRENT_DIR/$NAME/docker-compose.yaml"
+            
+            if [ -z "${scaffold_data["docker-run"]}" ]; then
+                echo "docker-run=docker compose up" >> $CURRENT_DIR/$NAME/scaffold.kubefs
+            fi
+            echo "$NAME component built successfuly, run using 'kubefs docker exec'"
+            return 0;;
         *) default_helper 1 "${scaffold_data["type"]}";;
     esac
 
@@ -103,7 +111,13 @@ execute_unique(){
     fi
 
     echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
-    cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]}
+    if [ "${scaffold_data["type"]}" == "db" ]; then
+        connection_string="mongodb://user:pass@localhost:27018/?directConnection=true"
+        echo "Connection String: $connection_string"
+    fi
+
+    cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]} > /dev/null 2>&1
+
     return 0
 }
 
@@ -122,20 +136,6 @@ execute(){
         *) execute_unique $name $SCRIPT_DIR;;
     esac
 }
-
-cleanup(){
-    for container in "${containers[@]}"; do
-        echo ""
-        echo "Stopping $container..."
-        docker stop $container > /dev/null 2>&1
-        docker rm $container > /dev/null 2>&1
-    done
-    containers=()
-    exit_flag=1
-    exit 0
-}
-
-# trap cleanup SIGINT
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"

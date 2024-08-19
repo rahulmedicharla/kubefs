@@ -53,6 +53,11 @@ download_dependencies(){
         brew install docker
     fi 
 
+    if !(command -v docker compose &> /dev/null); then
+        echo "Downloading docker compose..."
+        brew install docker-compose
+    fi
+
     if !(command -v node &> /dev/null); then
         echo "Downloading node..."
         brew install node
