@@ -84,6 +84,10 @@ exec_unique(){
 
     echo "Serving $NAME on port ${scaffold_data["port"]}"
     echo "Use Ctrl C. to stop serving $NAME"
+
+    if [ "${scaffold_data["type"]}" == "db" ]; then
+        echo "Connection String: ${scaffold_data["entry"]}"
+    fi
     
     exit_flag=0
     while [ "$exit_flag" -eq "0" ]; do

@@ -18,7 +18,7 @@ download_dependencies(){
         return 0
     fi
 
-    echo -e "\e[1mSetting up kubefs configurations for the first time...\e[0m"
+    echo "Setting up kubefs configurations for the first time..."
     echo "Verifying dependencies..."
 
     if !(command -v brew &> /dev/null); then
@@ -52,6 +52,11 @@ download_dependencies(){
         echo "Downloading docker..."
         brew install docker
     fi 
+
+    if !(command -v docker compose &> /dev/null); then
+        echo "Downloading docker compose..."
+        brew install docker-compose
+    fi
 
     if !(command -v node &> /dev/null); then
         echo "Downloading node..."

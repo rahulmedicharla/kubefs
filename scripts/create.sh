@@ -43,19 +43,21 @@ create_helper_func() {
 
     if [ -z $NAME ]; then
         default_helper 1 $NAME
-        return 1
+        return 0
     fi
 
     if [ -d "`pwd`/$NAME" ]; then
         echo "A component with that name already exists, please try a different name"
-        return 1
+        return 0
     fi
 
     eval $(parse_optional_params $@)
 
     # call specified function
+    echo "Creating $NAME..."
     $FUNC $NAME
     if [ $? -eq 1 ]; then
+        echo "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
         rm -rf `pwd`/$NAME
         return 0
     fi
@@ -76,13 +78,15 @@ validate_port(){
 create_db(){
     NAME=$1
 
-    PORT=8080
+    PORT=27017
 
     if [ -n "${opts["port"]}" ]; then
-        PORT=${opts["port"]}
+        echo "You can not set the port for a database. Please try again."
+        return 1
     fi
     if [ -n "${opts["entry"]}" ]; then
         echo "You can not set the entry file for a database. Please try again."
+        return 1
     fi    
 
     validate_port port=$PORT
@@ -94,7 +98,12 @@ create_db(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
+    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --connectWith skip --force)
+
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
     ENTRY=$(echo $output | grep -oP '(?<=Connection string: ).*')
 
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=atlas deployments start $NAME" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD)
@@ -125,9 +134,14 @@ create_api() {
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && go mod init $NAME)
+    (cd `pwd`/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
+
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
+
     sed -e "s/{{PORT}}/$PORT/" \
-        -e "s/{{PROJECT_NAME}}/$NAME/" \
+        -e "s/{{NAME}}/$NAME/" \
         "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
@@ -139,11 +153,12 @@ create_api() {
 create_frontend(){
     NAME=$1
 
-    PORT=8080
+    PORT=3000
     ENTRY=App.js
 
     if [ -n "${opts["port"]}" ]; then
-        PORT=${opts["port"]}
+        echo "You can't specify a port for a frontend application"
+        return 1
     fi
     if [ -n "${opts["entry"]}" ]; then
         echo "You can't specify an entry file for a frontend application"
@@ -160,8 +175,10 @@ create_frontend(){
 
     mkdir `pwd`/$NAME
     (cd `pwd`/$NAME && npx create-react-app . > /dev/null 2>&1)
-    sed -e "s/{{PORT}}/$PORT/" \
-        "$SCRIPT_DIR/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/config.env"
+
+    if [ $? -ne 0 ]; then
+        return 1
+    fi
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
     append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
