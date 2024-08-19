@@ -77,7 +77,6 @@ download_dependencies(){
     fi
 }
 init_project() {
-    SCRIPT_DIR=$1
 
     if [ ! -z $KUBEFS_CONFIG ]; then
         echo "Kubefs has already been setup. use 'kubefs --help' for more information"

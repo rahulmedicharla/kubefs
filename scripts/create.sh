@@ -142,7 +142,7 @@ create_api() {
 
     sed -e "s/{{PORT}}/$PORT/" \
         -e "s/{{NAME}}/$NAME/" \
-        "$SCRIPT_DIR/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
+        "$KUBEFS_CONFIG/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
     append_to_manifest $NAME $ENTRY $PORT "go run $ENTRY" api
@@ -203,15 +203,13 @@ append_to_manifest() {
 }
 
 main(){
-    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-
     if [ -z $1 ]; then
         default_helper 0
         return 1
     fi
 
     # source helper functions 
-    source $SCRIPT_DIR/scripts/helper.sh
+    source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
     if [ $? -eq 1 ]; then

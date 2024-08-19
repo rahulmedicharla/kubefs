@@ -98,15 +98,13 @@ exec_unique(){
 trap cleanup SIGINT
 
 main(){
-    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-
     if [ -z $1 ]; then
         default_helper 0
         return 1
     fi
 
     # source helper functions 
-    source $SCRIPT_DIR/scripts/helper.sh
+    source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
     if [ $? -eq 1 ]; then

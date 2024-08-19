@@ -31,8 +31,7 @@ source_scripts(){
 }
 
 main(){
-    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-
+    
     if [ -z "$1" ]; then
         default_helper 0
         return 0
@@ -41,14 +40,14 @@ main(){
     command=$1
     shift
     case $command in
-        "config") source_scripts ${SCRIPT_DIR}/scripts/config.sh $@;;
-        "create") source_scripts ${SCRIPT_DIR}/scripts/create.sh $@;;
-        "deploy") source_scripts ${SCRIPT_DIR}/scripts/deploy.sh $@;;
-        "describe") source_scripts ${SCRIPT_DIR}/scripts/describe.sh $@;;
-        "docker") source_scripts ${SCRIPT_DIR}/scripts/docker.sh $@;;
-        "exec") source_scripts ${SCRIPT_DIR}/scripts/exec.sh $@;;
-        "init") source_scripts ${SCRIPT_DIR}/scripts/init.sh $@;;
-        "setup") source $SCRIPT_DIR/scripts/setup.sh;;
+        "config") source_scripts ${KUBEFS_CONFIG}/scripts/config.sh $@;;
+        "create") source_scripts ${KUBEFS_CONFIG}/scripts/create.sh $@;;
+        "deploy") source_scripts ${KUBEFS_CONFIG}/scripts/deploy.sh $@;;
+        "describe") source_scripts ${KUBEFS_CONFIG}/scripts/describe.sh $@;;
+        "docker") source_scripts ${KUBEFS_CONFIG}/scripts/docker.sh $@;;
+        "exec") source_scripts ${KUBEFS_CONFIG}/scripts/exec.sh $@;;
+        "init") source_scripts ${KUBEFS_CONFIG}/scripts/init.sh $@;;
+        "setup") source $KUBEFS_CONFIG/scripts/setup.sh;;
         "--help") default_helper 0;;
         *) default_helper 1 $command;;
     esac

@@ -18,7 +18,6 @@ declare -a containers
 
 build_unique(){
     NAME=$1
-    SCRIPT_DIR=$2
     CURRENT_DIR=`pwd`
     echo "Building $NAME component..."
 
@@ -38,20 +37,20 @@ build_unique(){
         "api")
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$SCRIPT_DIR/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                "$KUBEFS_CONFIG/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$SCRIPT_DIR/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+                "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "frontend")
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                "$SCRIPT_DIR/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$SCRIPT_DIR/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+                "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "db")
-            cp "$SCRIPT_DIR/scripts/templates/template-db-compose.conf" "$CURRENT_DIR/$NAME/docker-compose.yaml"
+            cp "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" "$CURRENT_DIR/$NAME/docker-compose.yaml"
             
             if [ -z "${scaffold_data["docker-run"]}" ]; then
                 echo "docker-run=docker compose up" >> $CURRENT_DIR/$NAME/scaffold.kubefs
@@ -74,7 +73,6 @@ build_unique(){
 }
 
 build_all(){
-    SCRIPT_DIR=$1
     CURRENT_DIR=`pwd`
     eval "$(parse_manifest $CURRENT_DIR)"
 
@@ -82,30 +80,27 @@ build_all(){
         if [ "${manifest_data[$i]}" == "--" ]; then
             name=${manifest_data[$i+1]#*=}
 
-            build_unique $name $SCRIPT_DIR
+            build_unique $name
 
         fi
     done
 }
 
 build(){
-    SCRIPT_DIR=$1
-    name=$2
-
+    name=$1
     if [ -z $name ]; then
         default_helper 0
         return 1
     fi
     case $name in
-        "all") build_all $SCRIPT_DIR;;
+        "all") build_all;;
         "--help") default_helper 0;;
-        *) build_unique $name $SCRIPT_DIR;;
+        *) build_unique $name;;
     esac
 }
 
 execute_unique(){
     NAME=$1
-    SCRIPT_DIR=$2
     CURRENT_DIR=`pwd`
 
     if [ -z $NAME ]; then
@@ -137,7 +132,6 @@ execute_unique(){
 }
 
 execute_all(){
-    SCRIPT_DIR=$1
     CURRENT_DIR=`pwd`
     eval "$(parse_manifest $CURRENT_DIR)"
 
@@ -145,7 +139,7 @@ execute_all(){
         if [ "${manifest_data[$i]}" == "--" ]; then
             name=${manifest_data[$i+1]#*=}
 
-            execute_unique $name $SCRIPT_DIR &
+            execute_unique $name &
             containers+=($name) 
         fi
     done
@@ -171,8 +165,7 @@ cleanup(){
 trap cleanup SIGINT
 
 execute(){
-    SCRIPT_DIR=$1
-    name=$2
+    name=$1
 
     if [ -z $name ]; then
         default_helper 0
@@ -180,29 +173,27 @@ execute(){
     fi
 
     case $name in
-        "all") execute_all $SCRIPT_DIR;;
+        "all") execute_all;;
         "--help") default_helper 0;;
-        *) execute_unique $name $SCRIPT_DIR;;
+        *) execute_unique $name;;
     esac
 }
 
 main(){
-    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-
     if [ -z $1 ]; then
         default_helper 0
         return 1
     fi
 
     # source helper functions 
-    source $SCRIPT_DIR/scripts/helper.sh
+    source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
     type=$1
     shift
     case $type in
-        "build") build $SCRIPT_DIR $@;;
-        "exec") execute $SCRIPT_DIR $@;;
+        "build") build $@;;
+        "exec") execute $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $type;;
     esac
