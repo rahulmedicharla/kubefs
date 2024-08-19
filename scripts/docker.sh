@@ -20,6 +20,7 @@ build_unique(){
     NAME=$1
     SCRIPT_DIR=$2
     CURRENT_DIR=`pwd`
+    echo "Building $NAME component..."
 
     if [ -z $NAME ]; then
         default_helper 1 $NAME
@@ -61,7 +62,7 @@ build_unique(){
     esac
 
     # build docker image
-    cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .
+    (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .)
 
     echo "$NAME component built successfuly, run using 'kubefs docker exec'"
 
@@ -72,6 +73,21 @@ build_unique(){
     return 0
 }
 
+build_all(){
+    SCRIPT_DIR=$1
+    CURRENT_DIR=`pwd`
+    eval "$(parse_manifest $CURRENT_DIR)"
+
+    for ((i=0; i<${#manifest_data[@]}; i++)); do
+        if [ "${manifest_data[$i]}" == "--" ]; then
+            name=${manifest_data[$i+1]#*=}
+
+            build_unique $name $SCRIPT_DIR
+
+        fi
+    done
+}
+
 build(){
     SCRIPT_DIR=$1
     name=$2
@@ -80,8 +96,7 @@ build(){
         default_helper 0
         return 1
     fi
-
-    case $type in
+    case $name in
         "all") build_all $SCRIPT_DIR;;
         "--help") default_helper 0;;
         *) build_unique $name $SCRIPT_DIR;;
