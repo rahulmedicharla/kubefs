@@ -62,7 +62,6 @@ cleanup(){
 
 exec_unique(){
     NAME=$1
-
     CURRENT_DIR=`pwd`
 
     if [ -z $NAME ]; then
@@ -122,5 +121,3 @@ main(){
 
 main $@
 exit 0
-
-

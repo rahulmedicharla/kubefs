@@ -43,10 +43,9 @@ build_unique(){
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "frontend")
-            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+            cp "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" "$CURRENT_DIR/$NAME/Dockerfile"
+            sed -e "s/{{HOST_PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{PORT}}/3000/" \
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "db")

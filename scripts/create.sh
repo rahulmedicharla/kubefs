@@ -157,8 +157,7 @@ create_frontend(){
     ENTRY=App.js
 
     if [ -n "${opts["port"]}" ]; then
-        echo "You can't specify a port for a frontend application"
-        return 1
+        PORT=${opts["port"]}
     fi
     if [ -n "${opts["entry"]}" ]; then
         echo "You can't specify an entry file for a frontend application"
@@ -179,6 +178,8 @@ create_frontend(){
     if [ $? -ne 0 ]; then
         return 1
     fi
+
+    (cd `pwd`/$NAME && echo "PORT=$PORT" >> .env)
     
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
     append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
@@ -229,5 +230,3 @@ main(){
 }
 main $@
 exit 0
-
-
