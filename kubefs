@@ -9,7 +9,6 @@ default_helper() {
     echo "
     kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
 
-    kubefs auth - authenticate into kubefs platform to use features
     kubefs config - config login credentials & deployment targets to be used 
     kubefs create - easily create backend, frontend, & db constructs to be used within your application
     kubefs docker - create & test docker images for created resources to be deployed onto the clusters
@@ -19,35 +18,6 @@ default_helper() {
     kubefs exec - execute components to test your code
     kubefs setup - setup kubefs for the first time
     "
-}
-
-validate_auth(){
-    if [ -z "$(pass show kubefs/auth 2>/dev/null)" ]; then
-        echo "Please authenticate into kubefs platform using 'kubefs auth' or 'kubefs setup'"
-        echo "use kubefs --help for more information"
-        return 1
-    fi
-
-    auth_data=$(pass show kubefs/auth)
-    expires_in=$(echo $auth_data | jq -r '.expires_in')
-    issued_at=$(echo $auth_data | jq -r '.issued_at')
-    current_time=$(date +%s)
-
-    if [ $((current_time)) -ge $((issued_at + expires_in)) ]; then
-        echo "Authentication token has expired. Please authenticate again using 'kubefs auth' or 'kubefs setup'"
-        return 1
-    fi
-}
-
-source_scripts(){
-    validate_auth
-    if [ $? -eq 1 ]; then
-        default_helper 0
-        return 0
-    fi
-    file_path=$1
-    shift
-    source $file_path
 }
 
 main(){
@@ -61,14 +31,13 @@ main(){
     command=$1
     shift
     case $command in
-        "auth") source $SCRIPT_DIR/scripts/auth.sh;;
-        "config") source_scripts ${SCRIPT_DIR}/scripts/config.sh $@;;
-        "create") source_scripts ${SCRIPT_DIR}/scripts/create.sh $@;;
-        "deploy") source_scripts ${SCRIPT_DIR}/scripts/deploy.sh $@;;
-        "describe") source_scripts ${SCRIPT_DIR}/scripts/describe.sh $@;;
-        "docker") source_scripts ${SCRIPT_DIR}/scripts/docker.sh $@;;
-        "exec") source_scripts ${SCRIPT_DIR}/scripts/exec.sh $@;;
-        "init") source_scripts ${SCRIPT_DIR}/scripts/init.sh $@;;
+        "config") source ${SCRIPT_DIR}/scripts/config.sh;;
+        "create") source ${SCRIPT_DIR}/scripts/create.sh;;
+        "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
+        "describe") source ${SCRIPT_DIR}/scripts/describe.sh;;
+        "docker") source ${SCRIPT_DIR}/scripts/docker.sh;;
+        "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
+        "init") source ${SCRIPT_DIR}/scripts/init.sh;;
         "setup") source $SCRIPT_DIR/scripts/setup.sh;;
         "--help") default_helper 0;;
         *) default_helper 1 $command;;

@@ -6,18 +6,12 @@ default_helper() {
     fi
 
     echo "
-    kubefs auth - authenticate into your kubefs account
-    kubefs auth login <email> <password> - login to your kubefs account
+    kubefs setup - download dependencies & setup configurations for first time.
     "
 }
 
 
 download_dependencies(){
-    if pass show kubefs/auth &> /dev/null; then
-        echo "Already setup kubefs configurations. Use 'kubefs auth login' to login"
-        return 0
-    fi
-
     echo "Setting up kubefs configurations for the first time..."
     echo "Verifying dependencies..."
 
@@ -39,7 +33,6 @@ download_dependencies(){
         source ~/.bashrc
         brew install go
     fi
-
 
     # prompt to download minikube
     if !(command -v minikube &> /dev/null); then
@@ -83,103 +76,42 @@ download_dependencies(){
         brew install pass
     fi
 }
-
-create_doc(){
-    id_token=$1
-    apikey=$2
-    uid=$3
-
-    project_name=$(cat $SCRIPT_DIR/scripts/.env | grep KUBEFS_PROJECT_ID | cut -d '=' -f2)
-
-    # Create a new document in Firestore
-    response=$(curl -s -X PATCH "https://firestore.googleapis.com/v1/projects/$project_name/databases/(default)/documents/users/$uid" \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $id_token" \
-        --data-binary '{
-            "fields": {
-                "uid": {
-                    "stringValue": "'"$uid"'"
-                }
-            }
-        }'
-    )
-
-    return 0
-}
-
 init_project() {
     SCRIPT_DIR=$1
 
     download_dependencies
 
-    if [ ! -f $SCRIPT_DIR/scripts/.env ]; then
-        echo "Invalid Firebase API Key, please enter a valid key"
-        return 1  
-    fi
+    # # Check if GPG key exists
+    # if ! gpg --list-keys | grep -q "pub"; then
+    #     echo "No GPG key found. Generating a new GPG key..."
+    #     gpg --full-generate-key
+    # fi
 
-    # grab apikey
-    apikey=$(cat $SCRIPT_DIR/scripts/.env | grep FIREBASE_API_KEY | cut -d '=' -f2)
+    # # List keys and get the key ID
+    # key_id=$(gpg --list-keys | grep -A 1 "pub" | tail -n 1 | awk '{print $1}')
 
-    # enter email & password for account registration
-    echo "Enter your email to create your kubefs account: "
-    read EMAIL
-    echo "Enter your password to create your kubefs account: "
-    read -s PASSWORD
+    # # Initialize pass with the GPG key
+    # pass init "$key_id"
 
-    # Check if GPG key exists
-    if ! gpg --list-keys | grep -q "pub"; then
-        echo "No GPG key found. Generating a new GPG key..."
-        gpg --full-generate-key
-    fi
+    # auth_data=$(jq -n \
+    # --arg setup "$id_token" \
+    # --arg expires_in "$expires_in" \
+    # --arg issued_at "$issued_at" \
+    # --arg uid "$uid" \
+    # --arg refresh_token "$refresh_token" \
+    # '{id_token: $id_token, expires_in: $expires_in, issued_at: $issued_at, uid: $uid, refresh_token: $refresh_token}')
 
-    # List keys and get the key ID
-    key_id=$(gpg --list-keys | grep -A 1 "pub" | tail -n 1 | awk '{print $1}')
+    # echo "$auth_data" | pass insert -m kubefs/auth
 
-    # Initialize pass with the GPG key
-    pass init "$key_id"
-    
-    response=$(curl -s -X POST "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=$apikey" \
-        -H "Content-Type: application/json" \
-        --data-binary '{"email":"'"$EMAIL"'","password":"'"$PASSWORD"'","returnSecureToken":true}'
-    )
+    # if [ $? -eq 1 ]; then
+    #     echo "Account creation failed. Please try again."
+    #     return 1
+    # fi
 
-    # Parse the response
-    id_token=$(echo $response | jq -r '.idToken')
-    refresh_token=$(echo $response | jq -r '.refreshToken')
-    error_message=$(echo $response | jq -r '.error.message')
-    expires_in=($(echo $response | jq -r '.expiresIn'))
-    issued_at=$(date +%s)
-    uid=$(echo $response | jq -r '.localId')
-
-    # Check if account creation was successful
-    if [ "$id_token" != "null" ]; then
-
-        auth_data=$(jq -n \
-        --arg id_token "$id_token" \
-        --arg expires_in "$expires_in" \
-        --arg issued_at "$issued_at" \
-        --arg uid "$uid" \
-        --arg refresh_token "$refresh_token" \
-        '{id_token: $id_token, expires_in: $expires_in, issued_at: $issued_at, uid: $uid, refresh_token: $refresh_token}')
-
-        echo "$auth_data" | pass insert -m kubefs/auth
-
-        create_doc $id_token $apikey $uid
-
-        if [ $? -eq 1 ]; then
-            echo "Account creation failed. Please try again."
-            return 1
-        fi
-
-        echo ""
-        echo "Account creation successful!"
-        return 0
+    echo ""
+    echo "Account creation successful!"
+    return 0
         
-    else
-        echo "Account creation failed: $error_message"
-        echo "Please try again."
-        return 1
-    fi
 }
 
 main(){
