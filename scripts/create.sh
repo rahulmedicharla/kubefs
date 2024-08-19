@@ -81,8 +81,7 @@ create_db(){
     PORT=27017
 
     if [ -n "${opts["port"]}" ]; then
-        echo "You can not set the port for a database. Please try again."
-        return 1
+        PORT=${opts["port"]}
     fi
     if [ -n "${opts["entry"]}" ]; then
         echo "You can not set the entry file for a database. Please try again."
@@ -98,7 +97,7 @@ create_db(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --connectWith skip --force)
+    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
 
     if [ $? -ne 0 ]; then
         return 1
