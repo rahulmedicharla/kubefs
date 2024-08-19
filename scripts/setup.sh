@@ -79,37 +79,22 @@ download_dependencies(){
 init_project() {
     SCRIPT_DIR=$1
 
+    if [ ! -z $KUBEFS_CONFIG ]; then
+        echo "Kubefs has already been setup. use 'kubefs --help' for more information"
+        return 0
+    fi
+
+    if grep -q "export KUBEFS_CONFIG" ~/.bashrc; then
+        echo "Kubefs has already been setup. run 'source ~/.bashrc' to start using kubefs"
+        return 0
+    fi
+
     download_dependencies
 
-    # # Check if GPG key exists
-    # if ! gpg --list-keys | grep -q "pub"; then
-    #     echo "No GPG key found. Generating a new GPG key..."
-    #     gpg --full-generate-key
-    # fi
+    echo "export KUBEFS_CONFIG="$SCRIPT_DIR"" >> ~/.bashrc
 
-    # # List keys and get the key ID
-    # key_id=$(gpg --list-keys | grep -A 1 "pub" | tail -n 1 | awk '{print $1}')
-
-    # # Initialize pass with the GPG key
-    # pass init "$key_id"
-
-    # auth_data=$(jq -n \
-    # --arg setup "$id_token" \
-    # --arg expires_in "$expires_in" \
-    # --arg issued_at "$issued_at" \
-    # --arg uid "$uid" \
-    # --arg refresh_token "$refresh_token" \
-    # '{id_token: $id_token, expires_in: $expires_in, issued_at: $issued_at, uid: $uid, refresh_token: $refresh_token}')
-
-    # echo "$auth_data" | pass insert -m kubefs/auth
-
-    # if [ $? -eq 1 ]; then
-    #     echo "Account creation failed. Please try again."
-    #     return 1
-    # fi
-
-    echo ""
-    echo "Account creation successful!"
+    echo "" && echo "Account creation successful!"
+    echo "Please run 'source ~/.bashrc' to start using kubefs"
     return 0
         
 }

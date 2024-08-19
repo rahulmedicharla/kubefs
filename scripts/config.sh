@@ -1,59 +1,49 @@
-#!/bin/bash
-default_helper() {
-    if [ $1 -eq 1 ]; then
-        echo "${2} is not a valid argument, please follow types below"
-    fi
+# #!/bin/bash
+# default_helper() {
+#     if [ $1 -eq 1 ]; then
+#         echo "${2} is not a valid argument, please follow types below"
+#     fi
 
-    echo "
-    kubefs config - customzie your project congifurations
+#     echo "
+#     kubefs config - customzie your project congifurations
 
-    kubefs config mongo - set your mongodb username and password
-    kubefs config list - list all configurations
-    "
-}
+#     kubefs config list - list all configurations
+#     "
+# }
 
-configure_mongo(){
-    echo "Please enter your username"
-    read username
-    echo "Please enter your password"
-    read -s password
+# list_configurations(){
+#     echo "MongoDB configurations"
+#     pass show kubefs/config/mongo
+# }
 
-    mongo_data=$(jq -n \
-        --arg username "$username" \
-        --arg password "$password" \
-        '{username: $username, password: $password}'
-    )
 
-    echo "$mongo_data" | pass insert -f -m kubefs/config/mongo
+# # Check if GPG key exists
+# if ! gpg --list-keys | grep -q "pub"; then
+#     echo "No GPG key found. Generating a new GPG key..."
+#     gpg --full-generate-key
+# fi
 
-    echo "MongoDB configurations saved successfully"
-}
+# # List keys and get the key ID
+# key_id=$(gpg --list-keys | grep -A 1 "pub" | tail -n 1 | awk '{print $1}')
 
-list_configurations(){
-    echo "MongoDB configurations"
-    pass show kubefs/config/mongo
-}
+# # Initialize pass with the GPG key
+# pass init "$key_id"
 
-main(){
-    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+# auth_data=$(jq -n \
+# --arg setup "$id_token" \
+# --arg expires_in "$expires_in" \
+# --arg issued_at "$issued_at" \
+# --arg uid "$uid" \
+# --arg refresh_token "$refresh_token" \
+# '{id_token: $id_token, expires_in: $expires_in, issued_at: $issued_at, uid: $uid, refresh_token: $refresh_token}')
 
-    if [ -z $1 ]; then
-        default_helper 0
-        return 1
-    fi
+# echo "$auth_data" | pass insert -m kubefs/auth
 
-    # source helper functions 
-    source $SCRIPT_DIR/scripts/helper.sh
-    validate_project
+# if [ $? -eq 1 ]; then
+#     echo "Account creation failed. Please try again."
+#     return 1
+# fi
 
-    type=$1
-    case $type in
-        "mongo") configure_mongo;;
-        "list") list_configurations;;
-        "--help") default_helper 0;;
-        *) default_helper 1 $type;;
-    esac
-}
 
 main $@
 exit 0

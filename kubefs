@@ -19,6 +19,16 @@ default_helper() {
     kubefs setup - setup kubefs for the first time
     "
 }
+source_scripts(){
+    if [ -z $KUBEFS_CONFIG ]; then
+        echo "Please run kubefs setup to configure your kubefs environment"
+        return 1
+    fi
+
+    file_path=$1
+    shift
+    source $file_path
+}
 
 main(){
     SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
@@ -31,13 +41,13 @@ main(){
     command=$1
     shift
     case $command in
-        "config") source ${SCRIPT_DIR}/scripts/config.sh;;
-        "create") source ${SCRIPT_DIR}/scripts/create.sh;;
-        "deploy") source ${SCRIPT_DIR}/scripts/deploy.sh;;
-        "describe") source ${SCRIPT_DIR}/scripts/describe.sh;;
-        "docker") source ${SCRIPT_DIR}/scripts/docker.sh;;
-        "exec") source ${SCRIPT_DIR}/scripts/exec.sh;;
-        "init") source ${SCRIPT_DIR}/scripts/init.sh;;
+        "config") source_scripts ${SCRIPT_DIR}/scripts/config.sh $@;;
+        "create") source_scripts ${SCRIPT_DIR}/scripts/create.sh $@;;
+        "deploy") source_scripts ${SCRIPT_DIR}/scripts/deploy.sh $@;;
+        "describe") source_scripts ${SCRIPT_DIR}/scripts/describe.sh $@;;
+        "docker") source_scripts ${SCRIPT_DIR}/scripts/docker.sh $@;;
+        "exec") source_scripts ${SCRIPT_DIR}/scripts/exec.sh $@;;
+        "init") source_scripts ${SCRIPT_DIR}/scripts/init.sh $@;;
         "setup") source $SCRIPT_DIR/scripts/setup.sh;;
         "--help") default_helper 0;;
         *) default_helper 1 $command;;
