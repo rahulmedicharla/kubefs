@@ -136,6 +136,40 @@ execute_unique(){
     return 0
 }
 
+execute_all(){
+    SCRIPT_DIR=$1
+    CURRENT_DIR=`pwd`
+    eval "$(parse_manifest $CURRENT_DIR)"
+
+    for ((i=0; i<${#manifest_data[@]}; i++)); do
+        if [ "${manifest_data[$i]}" == "--" ]; then
+            name=${manifest_data[$i+1]#*=}
+
+            execute_unique $name $SCRIPT_DIR &
+            containers+=($name) 
+        fi
+    done
+
+    echo "Use Ctrl C. to stop all components..."
+
+    exit_flag=0
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
+}
+
+cleanup(){
+    CURRENT_DIR=`pwd`
+    echo "Stopping all components..."
+    for container in "${containers[@]}"; do
+        (cd $CURRENT_DIR/$container && docker-compose down)
+    done
+    exit_flag=1
+    exit 0
+}
+
+trap cleanup SIGINT
+
 execute(){
     SCRIPT_DIR=$1
     name=$2
@@ -145,7 +179,7 @@ execute(){
         return 1
     fi
 
-    case $type in
+    case $name in
         "all") execute_all $SCRIPT_DIR;;
         "--help") default_helper 0;;
         *) execute_unique $name $SCRIPT_DIR;;
