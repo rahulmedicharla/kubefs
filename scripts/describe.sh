@@ -71,6 +71,10 @@ main(){
     source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
+    if [ $? -eq 1 ]; then
+        return 0
+    fi
+
     type=$1
     case $type in
         "all")  describe_all;;

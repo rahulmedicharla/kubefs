@@ -15,6 +15,9 @@ init_project() {
         return 0;
     fi
 
+    if [ $(pass show kubefs/auth/docker) ]; then
+    fi
+
     mkdir $1 && cd $1
 
     touch manifest.kubefs

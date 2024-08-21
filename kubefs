@@ -17,8 +17,10 @@ default_helper() {
     kubefs init <project_name> - download all required dependencies & set up configuration files
     kubefs exec - execute components to test your code
     kubefs setup - setup kubefs for the first time
+    kubefs undeploy - undeploy components from release
     "
 }
+
 source_scripts(){
     if [ -z $KUBEFS_CONFIG ]; then
         echo "Please run kubefs setup to configure your kubefs environment"
@@ -48,6 +50,7 @@ main(){
         "exec") source_scripts ${KUBEFS_CONFIG}/scripts/exec.sh $@;;
         "init") source_scripts ${KUBEFS_CONFIG}/scripts/init.sh $@;;
         "setup") source $KUBEFS_CONFIG/scripts/setup.sh;;
+        "undeploy") source_scripts ${KUBEFS_CONFIG}/scripts/undeploy.sh $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $command;;
     esac

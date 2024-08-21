@@ -10,7 +10,6 @@ default_helper() {
     "
 }
 
-
 download_dependencies(){
     echo "Setting up kubefs configurations for the first time..."
     echo "Verifying dependencies..."
@@ -75,7 +74,13 @@ download_dependencies(){
         echo "Downloading pass..."
         brew install pass
     fi
+
+    if !(command -v helm &> /dev/null); then
+        echo "Downloading helm..."
+        brew install helm
+    fi
 }
+
 init_project() {
 
     if [ ! -z $KUBEFS_CONFIG ]; then

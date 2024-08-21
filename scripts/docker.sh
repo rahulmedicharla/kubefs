@@ -11,6 +11,8 @@ default_helper() {
     kubefs docker build <name> - build for singular component
     kubefs docker exec all - run all components from created docker images
     kubefs docker exec <name> - run singular component from created docker image
+    kubefs docker push all - push all components to docker hub
+    kubefs docker push <name> - push singular component to docker hub
     "
 }
 
@@ -180,6 +182,43 @@ execute(){
     esac
 }
 
+push_unique(){
+    NAME=$1
+    CURRENT_DIR=`pwd`
+
+    if [ -z $NAME ]; then
+        default_helper 1 $NAME
+        return 1
+    fi
+
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+        default_helper 1 $NAME
+        return 1
+    fi
+
+    eval "$(parse_scaffold "$NAME")"
+
+    echo "Pushing $NAME component to docker hub..."
+
+
+    return 0
+}
+
+push(){
+    name=$1
+
+    if [ -z $name ]; then
+        default_helper 0
+        return 1
+    fi
+
+    case $name in
+        "all") execute_all;;
+        "--help") default_helper 0;;
+        *) execute_unique $name;;
+    esac
+}
+
 main(){
     if [ -z $1 ]; then
         default_helper 0
@@ -190,11 +229,16 @@ main(){
     source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
+    if [ $? -eq 1 ]; then
+        return 0
+    fi
+
     type=$1
     shift
     case $type in
         "build") build $@;;
         "exec") execute $@;;
+        "push") push $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $type;;
     esac

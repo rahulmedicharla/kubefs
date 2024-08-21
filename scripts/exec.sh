@@ -107,7 +107,6 @@ main(){
     validate_project
 
     if [ $? -eq 1 ]; then
-        rm -rf `pwd`/$NAME
         return 0
     fi
 
