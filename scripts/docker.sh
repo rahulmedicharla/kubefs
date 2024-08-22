@@ -95,6 +95,7 @@ build(){
         default_helper 0
         return 1
     fi
+
     case $name in
         "all") build_all;;
         "--help") default_helper 0;;
@@ -198,8 +199,22 @@ push_unique(){
 
     eval "$(parse_scaffold "$NAME")"
 
+    if [ -z "${scaffold_data["docker-run"]}" ]; then
+        echo "Docker image not built for $NAME, please build using 'kubefs docker build'. "
+        return 1
+    fi
+
     echo "Pushing $NAME component to docker hub..."
 
+    docker tag $NAME "${scaffold_data["docker-repo"]}"
+    sudo docker push "${scaffold_data["docker-repo"]}"
+
+    if [ $? -eq 1 ]; then
+        echo "$NAME component was not pushed to docker hub. Please try again."
+        return 1
+    fi
+
+    echo "$NAME component pushed to docker hub successfuly"
 
     return 0
 }
@@ -213,9 +228,9 @@ push(){
     fi
 
     case $name in
-        "all") execute_all;;
+        "all") push_all;;
         "--help") default_helper 0;;
-        *) execute_unique $name;;
+        *) push_unique $name;;
     esac
 }
 
