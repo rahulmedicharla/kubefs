@@ -13,8 +13,8 @@ default_helper() {
 }
 
 list_configurations(){
-    echo "MongoDB configurations"
-    pass show kubefs/config/mongo
+    echo "Docker configurations:"
+    pass show kubefs/config/docker
 }
 
 validate_gpg_key(){
@@ -42,8 +42,6 @@ docker_config(){
         echo "" && echo "Docker login failed. Please try again or create account at https://hub.docker.com"
         return 1
     fi
-
-    echo $output
 
     validate_gpg_key
 

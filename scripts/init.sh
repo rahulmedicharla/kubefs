@@ -10,21 +10,54 @@ default_helper(){
 }
 
 init_project() {
-    if [ -z $1 ]; then
-        default_helper 0
-        return 0;
+    output=$(pass show kubefs/config/docker > /dev/null 2>&1)
+
+    if [ $? -eq 1 ]; then
+        echo "Docker configurations not found. Please run 'kubefs config docker' to login to docker ecosystem"
+        return 1
     fi
 
-    if [ $(pass show kubefs/auth/docker) ]; then
+    docker_auth=$(pass show kubefs/config/docker | jq -r '.')
+    username=$(echo $docker_auth | jq -r '.username')
+    password=$(echo $docker_auth | jq -r '.password')
+
+    echo "Please enter a project name:"
+    read name
+    echo "Please enter a short description for the project:"
+    read desc
+    echo "Please enter a long description for the project:"
+    read long_desc
+    
+    response=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+        -H "Content-Type: application/json" \
+        -d "{\"username\": \"$username\", \"password\": \"$password\"}")
+
+    token=$(echo $response | jq -r '.token')
+
+    if [ -z $token ]; then
+        echo "Failed to obtain Docker JWT token. Please try again."
+        return 1
     fi
 
-    mkdir $1 && cd $1
+    create_repo_response=$(curl -s "https://hub.docker.com/v2/repositories/" \
+        -H "Authorization: JWT $token" \
+        -H "Content-Type: application/json" \
+        --data "{
+            \"description\": \"$desc\",
+            \"full_description\": \"$long_desc\",
+            \"is_private\": true,
+            \"name\": \"$name\",
+            \"namespace\": \"$username\" 
+        }"
+    )
+
+    mkdir $name && cd $name
 
     touch manifest.kubefs
-    echo "KUBEFS_NAME=$1" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
+    echo "KUBEFS_NAME=$name" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
 
-    echo "Successfully created $1 project"
+    echo "Successfully created $name project"
 }
 
-init_project $1
+init_project
 exit 0

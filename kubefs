@@ -14,7 +14,7 @@ default_helper() {
     kubefs docker - create & test docker images for created resources to be deployed onto the clusters
     kubefs deploy - deploy the build targets onto the cluster!
     kubefs describe - describe the information about a construct
-    kubefs init <project_name> - download all required dependencies & set up configuration files
+    kubefs init - download all required dependencies & set up configuration files
     kubefs exec - execute components to test your code
     kubefs setup - setup kubefs for the first time
     kubefs undeploy - undeploy components from release
