@@ -219,6 +219,20 @@ push_unique(){
     return 0
 }
 
+push_all(){
+    CURRENT_DIR=`pwd`
+    eval "$(parse_manifest $CURRENT_DIR)"
+
+    for ((i=0; i<${#manifest_data[@]}; i++)); do
+        if [ "${manifest_data[$i]}" == "--" ]; then
+            name=${manifest_data[$i+1]#*=}
+
+            push_unique $name
+
+        fi
+    done
+}
+
 push(){
     name=$1
 
