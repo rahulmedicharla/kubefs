@@ -97,7 +97,7 @@ create_helper_func() {
         --data "{
             \"description\": \"$desc\",
             \"full_description\": \"$long_desc\",
-            \"is_private\": true,
+            \"is_private\": false,
             \"name\": \"$NAME\",
             \"namespace\": \"$username\" 
         }"

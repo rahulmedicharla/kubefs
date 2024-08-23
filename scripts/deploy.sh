@@ -34,7 +34,7 @@ parse_optional_params(){
     echo $(declare -p opts)
 }
 
-deploy_unique(){
+deploy_helper(){
     NAME=$1
     CURRENT_DIR=`pwd`
 
@@ -48,6 +48,32 @@ deploy_unique(){
         return 1
     fi
 
+    eval $(parse_optional_params $@)
+
+    TARGET="local"
+
+    if [ -n "${opts["target"]}" ]; then
+        TARGET=${opts["target"]}
+    fi
+
+    helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace
+    deploy_unique $NAME $TARGET
+}
+
+deploy_unique(){
+    NAME=$1
+    TARGET=$2
+
+    eval "$(parse_scaffold "$NAME")"
+
+    echo "Deploying $NAME component"
+    cp -r $KUBEFS_CONFIG/scripts/templates/deploy $CURRENT_DIR/$NAME/deploy
+    sed -e "s/{{NAME}}/$NAME/" \
+        -e "s/{{IMAGE}}/docker.io/${scaffold_data["docker-repo"]}" \
+        -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+        -e "s/{{TAG}}/latest/" \
+        "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+    
     return 0
 }
 
@@ -69,7 +95,7 @@ main(){
     case $type in
         "all") deploy_all;;
         "--help") default_helper 0;;
-        *) deploy_unique $@;;
+        *) deploy_helper $@;;
     esac    
 }
 main $@

@@ -66,7 +66,7 @@ build_unique(){
     # build docker image
     (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .)
 
-    echo "$NAME component built successfuly, run using 'kubefs docker exec'"
+    echo "$NAME component built successfuly, run using 'kubefs docker exec' or push using 'kubefs docker push'"
 
     if [ -z "${scaffold_data["docker-run"]}" ]; then
         echo "docker-run=docker compose up" >> $CURRENT_DIR/$NAME/scaffold.kubefs

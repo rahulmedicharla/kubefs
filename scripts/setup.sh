@@ -33,10 +33,10 @@ download_dependencies(){
         brew install go
     fi
 
-    # prompt to download minikube
-    if !(command -v minikube &> /dev/null); then
-        echo "Downloading minikube..."
-        brew install minikube
+    # prompt to download colima
+    if !(command -v colima &> /dev/null); then
+        echo "Downloading colima..."
+        brew install colima
     fi
 
     # prompt to download docker
