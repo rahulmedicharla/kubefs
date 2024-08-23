@@ -12,6 +12,23 @@ default_helper() {
     "
 }
 
+helmify_all(){
+    CURRENT_DIR=`pwd`
+    eval "$(parse_manifest $CURRENT_DIR)"
+
+    for ((i=0; i<${#manifest_data[@]}; i++)); do
+        if [ "${manifest_data[$i]}" == "--" ]; then
+            name=${manifest_data[$i+1]#*=}
+
+            helmify_unique $name
+
+        fi
+    done
+
+    echo "Helm charts created for all components"
+    return 0
+}
+
 helmify_unique(){
     NAME=$1
     CURRENT_DIR=`pwd`

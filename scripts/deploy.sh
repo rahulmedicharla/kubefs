@@ -55,19 +55,21 @@ deploy_helper(){
     if [ -n "${opts["target"]}" ]; then
         TARGET=${opts["target"]}
     fi
-
-    helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace
-    deploy_unique $NAME $TARGET
+    deploy_unique $CURRENT_DIR $NAME $TARGET
 }
 
 deploy_unique(){
-    NAME=$1
-    TARGET=$2
+    CURRENT_DIR=$1
+    NAME=$2
+    TARGET=$3
 
     eval "$(parse_scaffold "$NAME")"
 
     echo "Deploying $NAME component"
-    
+
+    helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
+    echo "Deployed $NAME component: http://localhost:8080/$NAME"
+    kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
     return 0
 }
 

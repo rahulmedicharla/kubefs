@@ -37,6 +37,9 @@ download_dependencies(){
     if !(command -v colima &> /dev/null); then
         echo "Downloading colima..."
         brew install colima
+        colima start --kubernetes
+        helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace > /dev/null 2>&1
+        colima stop
     fi
 
     # prompt to download docker
