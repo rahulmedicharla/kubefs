@@ -8,7 +8,7 @@ default_helper() {
     kubefs helmify - create helm charts for created resources to be deployed onto the clusters
 
     kubefs helmify all - create helm charts for all components
-    kubefs helmify <name> - create helm chart for singular component
+    kubefs helmify <name> <endpoint> - create helm chart for singular component,
     "
 }
 
@@ -33,12 +33,17 @@ helmify_unique(){
         return 1
     fi
 
+    echo "Helmifying $NAME component..."
+
     cp -r $KUBEFS_CONFIG/scripts/templates/deploy $CURRENT_DIR/$NAME/deploy
     sed -e "s#{{NAME}}#$NAME#" \
-        -e "s#{{IMAGE}}#docker.io/${scaffold_data["docker-repo"]}#" \
+        -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
         -e "s#{{PORT}}#${scaffold_data["port"]}#" \
         -e "s#{{TAG}}#latest#" \
+        -e "s#{{ENDPOINT}}#$NAME#" \
         "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+    
+    echo "Helm chart created for $NAME component"
     
     return 0
 }

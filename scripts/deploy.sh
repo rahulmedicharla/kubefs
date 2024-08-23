@@ -67,12 +67,6 @@ deploy_unique(){
     eval "$(parse_scaffold "$NAME")"
 
     echo "Deploying $NAME component"
-    cp -r $KUBEFS_CONFIG/scripts/templates/deploy $CURRENT_DIR/$NAME/deploy
-    sed -e "s/{{NAME}}/$NAME/" \
-        -e "s/{{IMAGE}}/docker.io/${scaffold_data["docker-repo"]}" \
-        -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-        -e "s/{{TAG}}/latest/" \
-        "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
     
     return 0
 }
