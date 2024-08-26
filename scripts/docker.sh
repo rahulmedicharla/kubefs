@@ -64,7 +64,12 @@ build_unique(){
     esac
 
     # build docker image
-    (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .)
+    cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .
+
+    if [ $? -eq 1 ]; then
+        echo "$NAME component was not built successfuly. Please try again."
+        return 1
+    fi
 
     echo "$NAME component built successfuly, run using 'kubefs docker exec' or push using 'kubefs docker push'"
 
@@ -130,7 +135,7 @@ execute_unique(){
         echo "  Connection String: $connection_string"
     fi
 
-    cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]} > /dev/null 2>&1
+    cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]}
 
     return 0
 }
