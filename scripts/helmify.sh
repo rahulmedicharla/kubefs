@@ -51,18 +51,41 @@ helmify_unique(){
     fi
 
     echo "Helmifying $NAME component..."
+    rm -rf $CURRENT_DIR/$NAME/deploy
 
-    cp -r $KUBEFS_CONFIG/scripts/templates/deploy $CURRENT_DIR/$NAME/deploy
+    case "${scaffold_data["type"]}" in
+        "api") helmify_api $NAME;;
+        "frontend") helmify_frontend $NAME;;
+        "database") helmify_database $NAME;;
+    esac
+    
+    echo "Helm chart created for $NAME component"
+    
+    return 0
+}
+
+helmify_frontend(){
+    NAME=$1
+    cp -r $KUBEFS_CONFIG/scripts/templates/deploy-fe $CURRENT_DIR/$NAME/deploy
     sed -e "s#{{NAME}}#$NAME#" \
         -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
         -e "s#{{PORT}}#${scaffold_data["port"]}#" \
         -e "s#{{TAG}}#latest#" \
         -e "s#{{ENDPOINT}}#$NAME#" \
+        -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
         "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
-    
-    echo "Helm chart created for $NAME component"
-    
-    return 0
+}
+
+helmify_api(){
+    NAME=$1
+    cp -r $KUBEFS_CONFIG/scripts/templates/deploy-api $CURRENT_DIR/$NAME/deploy
+    sed -e "s#{{NAME}}#$NAME#" \
+        -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
+        -e "s#{{PORT}}#${scaffold_data["port"]}#" \
+        -e "s#{{TAG}}#latest#" \
+        -e "s#{{ENDPOINT}}#$NAME#" \
+        -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
+        "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
 }
 
 

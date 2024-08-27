@@ -223,7 +223,7 @@ create_frontend(){
         return 1
     fi
 
-    (cd `pwd`/$NAME && npm install express && npm install dotenv && npm install nodemon && npm install handlab)
+    (cd `pwd`/$NAME && npm install express && npm install dotenv && npm install nodemon)
     
     if [ $? -ne 0 ]; then
         echo "Error creating node.js/express application. Please try again."
