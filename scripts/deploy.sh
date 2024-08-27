@@ -66,10 +66,8 @@ deploy_unique(){
     eval "$(parse_scaffold "$NAME")"
 
     echo "Deploying $NAME component"
-
+    docker pull "${scaffold_data["docker-repo"]}:latest"
     helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
-    echo "Deployed $NAME component: http://localhost:8080/$NAME"
-    kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
     return 0
 }
 

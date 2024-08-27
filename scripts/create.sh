@@ -197,13 +197,13 @@ create_frontend(){
     NAME=$1
 
     PORT=3000
-    ENTRY=App.js
+    ENTRY=index.js
 
     if [ -n "${opts["port"]}" ]; then
         PORT=${opts["port"]}
     fi
     if [ -n "${opts["entry"]}" ]; then
-        echo "You can't specify an entry file for a frontend application"
+        echo "You can not set the entry file for a frontend. Please try again."
         return 1
     fi    
 
@@ -216,16 +216,27 @@ create_frontend(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && npx create-react-app . > /dev/null 2>&1)
+    (cd `pwd`/$NAME && npm init -y)
 
     if [ $? -ne 0 ]; then
+        echo "Error creating node.js/express application. Please try again."
         return 1
     fi
 
-    (cd `pwd`/$NAME && jq ".scripts.start = \"PORT=$PORT react-scripts start\"" package.json > tmp.json && mv tmp.json package.json)
+    (cd `pwd`/$NAME && npm install express && npm install dotenv && npm install nodemon && npm install handlab)
     
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
+    if [ $? -ne 0 ]; then
+        echo "Error creating node.js/express application. Please try again."
+        return 1
+    fi
+
+    sed -e "s/{{NAME}}/$NAME/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-frontend.conf" > "`pwd`/$NAME/$ENTRY"
+    sed -e "s/{{PORT}}/$PORT/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/.env"
+
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=nodemon $ENTRY" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "nodemon $ENTRY" frontend
 
     return 0
 }
