@@ -34,6 +34,30 @@ parse_optional_params(){
     echo $(declare -p opts)
 }
 
+deploy_all(){
+    CURRENT_DIR=`pwd`
+    eval "$(parse_manifest $CURRENT_DIR)"
+
+    eval $(parse_optional_params $@)
+
+    TARGET="local"
+
+    if [ -n "${opts["target"]}" ]; then
+        TARGET=${opts["target"]}
+    fi
+
+    for ((i=0; i<${#manifest_data[@]}; i++)); do
+        if [ "${manifest_data[$i]}" == "--" ]; then
+            name=${manifest_data[$i+1]#*=}
+
+            deploy_unique $CURRENT_DIR $name $TARGET
+        fi
+    done
+
+    echo "Deployed all components"
+    return 0
+}
+
 deploy_helper(){
     NAME=$1
     CURRENT_DIR=`pwd`

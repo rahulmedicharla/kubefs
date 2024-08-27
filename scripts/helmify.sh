@@ -71,7 +71,6 @@ helmify_frontend(){
         -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
         -e "s#{{PORT}}#${scaffold_data["port"]}#" \
         -e "s#{{TAG}}#latest#" \
-        -e "s#{{ENDPOINT}}#$NAME#" \
         -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
         "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
 }
@@ -83,7 +82,6 @@ helmify_api(){
         -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
         -e "s#{{PORT}}#${scaffold_data["port"]}#" \
         -e "s#{{TAG}}#latest#" \
-        -e "s#{{ENDPOINT}}#$NAME#" \
         -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
         "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
 }
