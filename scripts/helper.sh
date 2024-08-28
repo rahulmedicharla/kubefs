@@ -29,3 +29,15 @@ parse_scaffold(){
 
     echo $(declare -p scaffold_data)
 }
+
+print_success(){
+    echo -e "\033[0;32m$1\033[0m"
+}
+
+print_error(){
+    echo -e "\033[0;31m$1\033[0m"
+}
+
+print_warning(){
+    echo -e "\033[0;33m$1\033[0m"
+}
