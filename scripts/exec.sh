@@ -23,14 +23,10 @@ exec_all(){
     for ((i=0; i<${#manifest_data[@]}; i++)); do
         if [ "${manifest_data[$i]}" == "--" ]; then
             name=${manifest_data[$i+1]#*=}
-            entry=${manifest_data[$i+2]#*=}
-            port=${manifest_data[$i+3]#*=}
-            command=${manifest_data[$i+4]#*=}
             type=${manifest_data[$i+5]#*=}
             
-            cd $CURRENT_DIR/$name; $command > /dev/null 2>&1 &
+            exec_unique $name &
             pids+=($!:$name:$type)
-            echo "Serving $name on port $port"
         fi
     done
 
@@ -51,7 +47,7 @@ cleanup(){
 
         echo "Stopping $name"
         if [ $type == "db" ]; then
-            atlas deployment pause $name 2>/dev/null
+            docker-compose down 2>/dev/null
         else
             kill $pid 2>/dev/null
         fi
@@ -85,7 +81,7 @@ exec_unique(){
     echo "Use Ctrl C. to stop serving $NAME"
 
     if [ "${scaffold_data["type"]}" == "db" ]; then
-        echo "Connection String: ${scaffold_data["entry"]}"
+        echo "Connect to $NAME using 'docker exec -it $NAME-$NAME-1 cqlsh'"
     fi
     
     exit_flag=0
@@ -107,7 +103,6 @@ main(){
     validate_project
 
     if [ $? -eq 1 ]; then
-        rm -rf `pwd`/$NAME
         return 0
     fi
 

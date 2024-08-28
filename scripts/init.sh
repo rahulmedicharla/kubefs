@@ -12,7 +12,7 @@ default_helper(){
 init_project() {
     if [ -z $1 ]; then
         default_helper 0
-        return 0;
+        return 1
     fi
 
     mkdir $1 && cd $1
@@ -23,5 +23,5 @@ init_project() {
     echo "Successfully created $1 project"
 }
 
-init_project $1
+init_project $@
 exit 0

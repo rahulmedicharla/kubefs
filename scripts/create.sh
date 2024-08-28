@@ -38,8 +38,9 @@ parse_optional_params(){
 
 create_helper_func() {
     FUNC=$1
-    NAME=$2
-    shift 2
+    TYPE=$2
+    NAME=$3
+    shift 3
 
     if [ -z $NAME ]; then
         default_helper 1 $NAME
@@ -61,7 +62,59 @@ create_helper_func() {
         rm -rf `pwd`/$NAME
         return 0
     fi
+
+    if [ $TYPE == "db" ]; then    
+        echo ""
+        echo "$NAME $FUNC was created successfully!"
+        (cd `pwd`/$NAME && echo "docker-repo=null" >> scaffold.kubefs)
+        return 0
+    fi
+
+    output=$(pass show kubefs/config/docker > /dev/null 2>&1)
+
+    if [ $? -eq 1 ]; then
+        echo "Docker configurations not found. Please run 'kubefs config docker' to login to docker ecosystem"
+        rm -rf `pwd`/$NAME
+        return 1
+    fi
     
+
+    docker_auth=$(pass show kubefs/config/docker | jq -r '.')
+    username=$(echo $docker_auth | jq -r '.username')
+    password=$(echo $docker_auth | jq -r '.password')
+
+    echo ""
+    echo "Please enter a short description for the project:"
+    read desc
+    echo "Please enter a long description for the project:"
+    read long_desc
+    
+    response=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+        -H "Content-Type: application/json" \
+        -d "{\"username\": \"$username\", \"password\": \"$password\"}")
+
+    token=$(echo $response | jq -r '.token')
+
+    if [ -z $token ]; then
+        echo "Failed to obtain Docker JWT token. Please try again."
+        return 1
+    fi
+
+    create_repo_response=$(curl -s "https://hub.docker.com/v2/repositories/" \
+        -H "Authorization: JWT $token" \
+        -H "Content-Type: application/json" \
+        --data "{
+            \"description\": \"$desc\",
+            \"full_description\": \"$long_desc\",
+            \"is_private\": false,
+            \"name\": \"$NAME\",
+            \"namespace\": \"$username\" 
+        }"
+    )
+
+    (cd `pwd`/$NAME && echo "docker-repo=$username/$NAME" >> scaffold.kubefs)
+    
+    echo ""
     echo "$NAME $FUNC was created successfully!"
     return 0
 }
@@ -78,7 +131,7 @@ validate_port(){
 create_db(){
     NAME=$1
 
-    PORT=27017
+    PORT=9042
 
     if [ -n "${opts["port"]}" ]; then
         PORT=${opts["port"]}
@@ -97,16 +150,17 @@ create_db(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
 
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
+    ENTRY="127.0.0.1:$PORT"
 
-    ENTRY=$(echo $output | grep -oP '(?<=Connection string: ).*')
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=docker-compose up" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD && echo "docker-run=docker-compose up" >> $SCAFFOLD)
+    
+    sed -e "s/{{NAME}}/$NAME/g" \
+        -e "s/{{PORT}}/$PORT/" \
+        -e "s/{{HOST_PORT}}/$PORT/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "`pwd`/$NAME/docker-compose.yaml"
 
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=atlas deployments start $NAME" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "atlas deployments start $NAME" db
+    append_to_manifest $NAME $ENTRY $PORT "docker-compose up" db
 
     return 0
 }
@@ -153,13 +207,13 @@ create_frontend(){
     NAME=$1
 
     PORT=3000
-    ENTRY=App.js
+    ENTRY=index.js
 
     if [ -n "${opts["port"]}" ]; then
         PORT=${opts["port"]}
     fi
     if [ -n "${opts["entry"]}" ]; then
-        echo "You can't specify an entry file for a frontend application"
+        echo "You can not set the entry file for a frontend. Please try again."
         return 1
     fi    
 
@@ -172,16 +226,27 @@ create_frontend(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && npx create-react-app . > /dev/null 2>&1)
+    (cd `pwd`/$NAME && npm init -y)
 
     if [ $? -ne 0 ]; then
+        echo "Error creating node.js/express application. Please try again."
         return 1
     fi
 
-    (cd `pwd`/$NAME && jq ".scripts.start = \"PORT=$PORT react-scripts start\"" package.json > tmp.json && mv tmp.json package.json)
+    (cd `pwd`/$NAME && npm install express && npm install dotenv && npm install nodemon)
     
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=npm start" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "npm start" frontend
+    if [ $? -ne 0 ]; then
+        echo "Error creating node.js/express application. Please try again."
+        return 1
+    fi
+
+    sed -e "s/{{NAME}}/$NAME/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-frontend.conf" > "`pwd`/$NAME/$ENTRY"
+    sed -e "s/{{PORT}}/$PORT/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/.env"
+
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=nodemon $ENTRY" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
+    append_to_manifest $NAME $ENTRY $PORT "nodemon $ENTRY" frontend
 
     return 0
 }
@@ -220,9 +285,9 @@ main(){
     type=$1
     shift
     case $type in
-        "api") create_helper_func create_api $@;;
-        "frontend") create_helper_func create_frontend $@;;
-        "database") create_helper_func create_db $@;;
+        "api") create_helper_func create_api $type $@;;
+        "frontend") create_helper_func create_frontend $type $@;;
+        "database") create_helper_func create_db $type $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $type;;
     esac    

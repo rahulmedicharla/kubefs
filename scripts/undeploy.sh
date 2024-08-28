@@ -5,14 +5,14 @@ default_helper() {
     fi
 
     echo "
-    kubefs describe - describe the information about some or all of your constructs
+    kubefs undeploy - undeploy the created resources from the clusters
 
-    kubefs describe all - describe the information for all constructs
-    kubefs describe <name> - describe the information about the construct with given name
+    kubefs undeploy all - undeploy all components from the clusters
+    kubefs undeploy <name> - undeploy singular component from the clusters
     "
 }
 
-describe_all(){
+undeploy_all(){
     CURRENT_DIR=`pwd`
     eval "$(parse_manifest $CURRENT_DIR)"
 
@@ -24,19 +24,16 @@ describe_all(){
             command=${manifest_data[$i+4]#*=}
             type=${manifest_data[$i+5]#*=}
             
-            echo "Name:$name"
-            echo "Entry:$entry"
-            echo "Port:$port"
-            echo "Command:$command"
-            echo "Type:$type"
-            echo ""
+            helm uninstall $name
         fi
     done
+
+    echo "Successfully undeployed all components"
 
     return 0
 }
 
-describe_unique(){
+undeploy_unique(){
     NAME=$1
     CURRENT_DIR=`pwd`
 
@@ -50,15 +47,11 @@ describe_unique(){
         return 1
     fi
 
-    eval "$(parse_scaffold "$NAME")"
+    helm uninstall $NAME
 
-    echo "Name:${scaffold_data["name"]}"
-    echo "Entry:${scaffold_data["entry"]}"
-    echo "Port:${scaffold_data["port"]}"
-    echo "Command:${scaffold_data["command"]}"
-    echo "Type:${scaffold_data["type"]}"
-    echo "Docker Run:${scaffold_data["docker-run"]}"
+    echo "Successfully undeployed $NAME component"
 
+    return 0
 }
 
 main(){
@@ -77,9 +70,9 @@ main(){
 
     type=$1
     case $type in
-        "all")  describe_all;;
+        "all")  undeploy_all;;
         "--help") default_helper 0;;
-        *) describe_unique $type;;
+        *) undeploy_unique $type;;
     esac
 }
 

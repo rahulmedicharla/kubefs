@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "db-deploy.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "db-deploy.labels" . | nindent 4 }}
+spec:
+  clusterIP: None  # This makes the service headless
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "db-deploy.selectorLabels" . | nindent 4 }}

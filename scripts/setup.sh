@@ -10,7 +10,6 @@ default_helper() {
     "
 }
 
-
 download_dependencies(){
     echo "Setting up kubefs configurations for the first time..."
     echo "Verifying dependencies..."
@@ -34,10 +33,13 @@ download_dependencies(){
         brew install go
     fi
 
-    # prompt to download minikube
-    if !(command -v minikube &> /dev/null); then
-        echo "Downloading minikube..."
-        brew install minikube
+    # prompt to download colima
+    if !(command -v colima &> /dev/null); then
+        echo "Downloading colima..."
+        brew install colima
+        colima start --kubernetes
+        kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
+        colima stop
     fi
 
     # prompt to download docker
@@ -56,9 +58,9 @@ download_dependencies(){
         brew install node
     fi
 
-    if !(command -v atlas &> /dev/null); then
-        echo "Downloading mongodb atlas..."
-        brew install mongodb-atlas
+    if !(command -v cassandra &> /dev/null); then
+        echo "Downloading cassandra..."
+        brew install cassandra
     fi
 
     if !(command -v jq &> /dev/null); then
@@ -75,7 +77,18 @@ download_dependencies(){
         echo "Downloading pass..."
         brew install pass
     fi
+
+    if !(command -v helm &> /dev/null); then
+        echo "Downloading helm..."
+        brew install helm
+    fi
+
+    if !(command -v kubectl &> /dev/null); then
+        echo "Downloading kubectl..."
+        brew install kubectl
+    fi
 }
+
 init_project() {
 
     if [ ! -z $KUBEFS_CONFIG ]; then
