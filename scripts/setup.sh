@@ -38,6 +38,7 @@ download_dependencies(){
         echo "Downloading colima..."
         brew install colima
         colima start --kubernetes
+        kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
         colima stop
     fi
 
@@ -80,6 +81,11 @@ download_dependencies(){
     if !(command -v helm &> /dev/null); then
         echo "Downloading helm..."
         brew install helm
+    fi
+
+    if !(command -v kubectl &> /dev/null); then
+        echo "Downloading kubectl..."
+        brew install kubectl
     fi
 }
 

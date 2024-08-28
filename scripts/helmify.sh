@@ -56,12 +56,23 @@ helmify_unique(){
     case "${scaffold_data["type"]}" in
         "api") helmify_api $NAME;;
         "frontend") helmify_frontend $NAME;;
-        "database") helmify_database $NAME;;
+        "db") helmify_database $NAME;;
     esac
     
     echo "Helm chart created for $NAME component"
     
     return 0
+}
+
+helmify_database(){
+    NAME=$1
+    cp -r $KUBEFS_CONFIG/scripts/templates/deploy-db $CURRENT_DIR/$NAME/deploy
+    sed -e "s#{{NAME}}#$NAME#" \
+        -e "s#{{IMAGE}}#cassandra#" \
+        -e "s#{{PORT}}#${scaffold_data["port"]}#" \
+        -e "s#{{TAG}}#latest#" \
+        -e "s#{{SERVICE_TYPE}}#None#" \
+        "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
 }
 
 helmify_frontend(){

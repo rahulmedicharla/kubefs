@@ -9,16 +9,16 @@ default_helper() {
     echo "
     kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
 
-    kubefs config - config login credentials & deployment targets to be used 
-    kubefs create - easily create backend, frontend, & db constructs to be used within your application
-    kubefs docker - create, test, & push docker images for created resources to be deployed onto the clusters
-    kubefs deploy - deploy the build targets onto the cluster!
-    kubefs describe - describe the information about a construct
-    kubefs exec - execute components to test your code
-    kubefs helmify - create helm charts for your components
-    kubefs init <name> - download all required dependencies & set up configuration files
-    kubefs setup - setup kubefs for the first time
-    kubefs undeploy - undeploy components from release
+    Usage: kubefs <command> [options]
+        kubefs create - easily create backend, frontend, & db constructs to be used within your application
+        kubefs docker - create, test, & push docker images for created resources to be deployed onto the clusters
+        kubefs deploy - deploy the build targets onto the cluster!
+        kubefs describe - describe the information about a construct
+        kubefs exec - execute components to test your code
+        kubefs helmify - create helm charts for your components
+        kubefs init <name> - download all required dependencies & set up configuration files
+        kubefs setup - setup kubefs for the first time
+        kubefs undeploy - undeploy components from release
     "
 }
 

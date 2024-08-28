@@ -90,7 +90,6 @@ deploy_unique(){
     eval "$(parse_scaffold "$NAME")"
 
     echo "Deploying $NAME component"
-    docker pull "${scaffold_data["docker-repo"]}:latest"
     helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
     return 0
 }

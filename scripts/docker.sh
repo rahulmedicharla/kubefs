@@ -29,6 +29,7 @@ build_unique(){
     fi
 
     if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+        echo "$NAME" happening $CURRENT_DIR
         default_helper 1 $NAME
         return 1
     fi
@@ -58,7 +59,7 @@ build_unique(){
     esac
 
     # build docker image
-    cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .
+    (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .)
 
     if [ $? -eq 1 ]; then
         echo "$NAME component was not built successfuly. Please try again."
@@ -128,7 +129,7 @@ execute_unique(){
         echo "Connect to $NAME using 'docker exec -it $NAME-$NAME-1 cqlsh'"
     fi
 
-    cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]}
+    (cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]})
 
     return 0
 }

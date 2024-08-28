@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "frontend-deploy.fullname" . }}
+  name: {{ include "db-deploy.fullname" . }}
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "frontend-deploy.labels" . | nindent 4 }}
+    {{- include "db-deploy.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
+  clusterIP: None  # This makes the service headless
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http
       protocol: TCP
       name: http
   selector:
-    {{- include "frontend-deploy.selectorLabels" . | nindent 4 }}
+    {{- include "db-deploy.selectorLabels" . | nindent 4 }}

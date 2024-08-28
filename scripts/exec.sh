@@ -23,14 +23,10 @@ exec_all(){
     for ((i=0; i<${#manifest_data[@]}; i++)); do
         if [ "${manifest_data[$i]}" == "--" ]; then
             name=${manifest_data[$i+1]#*=}
-            entry=${manifest_data[$i+2]#*=}
-            port=${manifest_data[$i+3]#*=}
-            command=${manifest_data[$i+4]#*=}
             type=${manifest_data[$i+5]#*=}
             
-            cd $CURRENT_DIR/$name; $command > /dev/null 2>&1 &
+            exec_unique $name &
             pids+=($!:$name:$type)
-            echo "Serving $name on port $port"
         fi
     done
 
