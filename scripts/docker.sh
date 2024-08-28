@@ -52,13 +52,7 @@ build_unique(){
                 -e "s/{{NAME}}/${scaffold_data["name"]}/" \
                 "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "db")
-            sed -e "s/{{HOST_PORT}}/${scaffold_data["port"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
-            
-            if [ -z "${scaffold_data["docker-run"]}" ]; then
-                echo "docker-run=docker compose up" >> $CURRENT_DIR/$NAME/scaffold.kubefs
-            fi
-            echo "$NAME component built successfuly, run using 'kubefs docker exec'"
+            echo "Don't need to build docker image for database components."
             return 0;;
         *) default_helper 1 "${scaffold_data["type"]}";;
     esac
@@ -131,8 +125,7 @@ execute_unique(){
 
     echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
     if [ "${scaffold_data["type"]}" == "db" ]; then
-        connection_string="mongodb://user:pass@localhost:${scaffold_data["port"]}/?directConnection=true"
-        echo "  Connection String: $connection_string"
+        echo "Connect to $NAME using 'docker exec -it $NAME-$NAME-1 cqlsh'"
     fi
 
     cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]}
@@ -209,6 +202,11 @@ push_unique(){
         return 1
     fi
 
+    if [ "${scaffold_data["type"]}" == "db" ]; then
+        echo "You don't need to push a database component to docker hub. Use 'kubefs docker exec' to run the component"
+        return 0
+    fi
+
     echo "Pushing $NAME component to docker hub..."
 
     docker tag $NAME "${scaffold_data["docker-repo"]}"
@@ -219,7 +217,7 @@ push_unique(){
         return 1
     fi
 
-    echo "$NAME component pushed to docker hub successfuly"
+    echo "$NAME component pushed to docker hub successfully"
 
     return 0
 }

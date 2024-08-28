@@ -51,7 +51,7 @@ cleanup(){
 
         echo "Stopping $name"
         if [ $type == "db" ]; then
-            atlas deployment pause $name 2>/dev/null
+            docker-compose down 2>/dev/null
         else
             kill $pid 2>/dev/null
         fi
@@ -85,7 +85,7 @@ exec_unique(){
     echo "Use Ctrl C. to stop serving $NAME"
 
     if [ "${scaffold_data["type"]}" == "db" ]; then
-        echo "Connection String: ${scaffold_data["entry"]}"
+        echo "Connect to $NAME using 'docker exec -it $NAME-$NAME-1 cqlsh'"
     fi
     
     exit_flag=0

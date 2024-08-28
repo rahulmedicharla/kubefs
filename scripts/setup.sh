@@ -38,7 +38,6 @@ download_dependencies(){
         echo "Downloading colima..."
         brew install colima
         colima start --kubernetes
-        helm upgrade --install ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --namespace ingress-nginx --create-namespace > /dev/null 2>&1
         colima stop
     fi
 
@@ -58,9 +57,9 @@ download_dependencies(){
         brew install node
     fi
 
-    if !(command -v atlas &> /dev/null); then
-        echo "Downloading mongodb atlas..."
-        brew install mongodb-atlas
+    if !(command -v cassandra &> /dev/null); then
+        echo "Downloading cassandra..."
+        brew install cassandra
     fi
 
     if !(command -v jq &> /dev/null); then

@@ -38,8 +38,9 @@ parse_optional_params(){
 
 create_helper_func() {
     FUNC=$1
-    NAME=$2
-    shift 2
+    TYPE=$2
+    NAME=$3
+    shift 3
 
     if [ -z $NAME ]; then
         default_helper 1 $NAME
@@ -61,7 +62,14 @@ create_helper_func() {
         rm -rf `pwd`/$NAME
         return 0
     fi
-    
+
+    if [ $TYPE == "db" ]; then    
+        echo ""
+        echo "$NAME $FUNC was created successfully!"
+        (cd `pwd`/$NAME && echo "docker-repo=null" >> scaffold.kubefs)
+        return 0
+    fi
+
     output=$(pass show kubefs/config/docker > /dev/null 2>&1)
 
     if [ $? -eq 1 ]; then
@@ -69,6 +77,7 @@ create_helper_func() {
         rm -rf `pwd`/$NAME
         return 1
     fi
+    
 
     docker_auth=$(pass show kubefs/config/docker | jq -r '.')
     username=$(echo $docker_auth | jq -r '.username')
@@ -122,7 +131,7 @@ validate_port(){
 create_db(){
     NAME=$1
 
-    PORT=27017
+    PORT=9042
 
     if [ -n "${opts["port"]}" ]; then
         PORT=${opts["port"]}
@@ -141,16 +150,17 @@ create_db(){
     SCAFFOLD=scaffold.kubefs
 
     mkdir `pwd`/$NAME
-    output=$(cd `pwd`/$NAME && atlas deployments setup $NAME --type local --port $PORT --connectWith skip --force)
 
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
+    ENTRY="127.0.0.1:$PORT"
 
-    ENTRY=$(echo $output | grep -oP '(?<=Connection string: ).*')
+    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=docker-compose up" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD && echo "docker-run=docker-compose up" >> $SCAFFOLD)
+    
+    sed -e "s/{{NAME}}/$NAME/g" \
+        -e "s/{{PORT}}/$PORT/" \
+        -e "s/{{HOST_PORT}}/$PORT/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "`pwd`/$NAME/docker-compose.yaml"
 
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=atlas deployments start $NAME" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "atlas deployments start $NAME" db
+    append_to_manifest $NAME $ENTRY $PORT "docker-compose up" db
 
     return 0
 }
@@ -275,9 +285,9 @@ main(){
     type=$1
     shift
     case $type in
-        "api") create_helper_func create_api $@;;
-        "frontend") create_helper_func create_frontend $@;;
-        "database") create_helper_func create_db $@;;
+        "api") create_helper_func create_api $type $@;;
+        "frontend") create_helper_func create_frontend $type $@;;
+        "database") create_helper_func create_db $type $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $type;;
     esac    
