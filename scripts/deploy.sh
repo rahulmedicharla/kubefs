@@ -195,7 +195,7 @@ main(){
     case $COMMAND in
         "all") deploy_all $@;;
         "--help") default_helper;;
-        *) deploy_unique $COMMAND $@;;
+        *) deploy_helper $COMMAND $@;;
     esac    
 }
 main $@

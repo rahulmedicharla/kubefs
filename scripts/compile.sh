@@ -9,8 +9,8 @@ default_helper() {
         kubefs compile --help - display this help message
 
         Args:
-            --no-build: Only push docker image
-            --no-push: Only build docker image
+            --no-build: Don't build docker images
+            --no-push: Don't push docker images to docker hub
     "
 }
 
@@ -76,7 +76,6 @@ compile_unique(){
     fi
 
     eval "$(parse_optional_params $@)"
-    
 
     if [ "${opts["--no-build"]}" == false ]; then
         build $NAME
@@ -118,6 +117,7 @@ build(){
                 "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "frontend")
             sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
+                -e "s/{{ENTRY}}/${scaffold_data["entry"]}/" \
                 "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
             sed -e "s/{{HOST_PORT}}/${scaffold_data["port"]}/" \
                 -e "s/{{PORT}}/${scaffold_data["port"]}/" \

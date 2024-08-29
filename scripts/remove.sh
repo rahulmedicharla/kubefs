@@ -72,7 +72,7 @@ remove_helper(){
     remove_unique $NAME $@
 
     if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        print_error "Error occured removing $NAME. Please try again or use 'kubefs --help' for more information."
         return 0
     fi
 
@@ -102,7 +102,7 @@ remove_unique(){
     eval "$(parse_optional_params $@)"
     eval "$(parse_scaffold $NAME)"
 
-    if [ "${opts["--no-remote"]}" == false ]; then
+    if [ "${opts["--no-remote"]}" == false ] && [ -n "${scaffold_data["docker-repo"]}" ]; then
 
         echo "Deleting docker repo for $NAME..."
 
@@ -146,6 +146,10 @@ remove_unique(){
         docker rm $NAME-container-1 > /dev/null 2>&1
         docker rmi $NAME > /dev/null 2>&1
         docker rmi "${scaffold_data["docker-repo"]}" > /dev/null 2>&1
+
+        if [ "${scaffold_data["type"]}" == "db" ]; then
+            docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1
+        fi
 
         rm -rf $CURRENT_DIR/$NAME
     fi

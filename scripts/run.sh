@@ -86,7 +86,7 @@ run_unique(){
         echo "Running $NAME component on port ${scaffold_data["port"]} using docker image $NAME..."
         
         if [ "${scaffold_data["type"]}" == "db" ]; then
-            echo "Connect to $NAME using 'docker exec -it $NAME-cassandra-1 cqlsh'"
+            echo "Connect to $NAME using 'docker exec -it $NAME-container-1 cqlsh'"
         fi
 
         (cd $CURRENT_DIR/$NAME && ${scaffold_data["docker-run"]})
@@ -99,10 +99,6 @@ run_unique(){
 
         echo "Serving $NAME on port ${scaffold_data["port"]}"
         echo "Use Ctrl C. to stop serving $NAME"
-
-        if [ "${scaffold_data["type"]}" == "db" ]; then
-            echo "Connect to $NAME using 'docker exec -it $NAME-cassandra-1 cqlsh'"
-        fi
 
         (cd $CURRENT_DIR/$NAME && ${scaffold_data["command"]} > /dev/null 2>&1)
     fi

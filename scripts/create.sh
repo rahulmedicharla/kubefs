@@ -1,80 +1,63 @@
 #!/bin/bash
 default_helper() {
-    if [ $1 -eq 1 ]; then
-        echo "${2} is not a valid argument, please follow types below"
-    fi
-
     echo "
-    kubefs create - easily create backend, frontend, & db constructs to be used within your application
+    kubefs compile - easily create backend, frontend, & db resources to be used within your application
 
+    Usage: kubefs create <COMMAND> [ARGS]
     kubefs create api <name> - creates a sample GET api called <name> using golang
     kubefs create frontend <name> - creates a sample frontend application called <name> using react
     kubefs create database <name> - creates a sample database called <name> using atlas
 
-    optional paramaters:
-        -p <port> - specify the port number for the api (default is 8080)
-        -e <entry_file> - specify the entry file for the api (default is main.go)
+    Args:
+        --port <port> - specify the port number for resource
+        --entry <entry> - specify the entry file | host IP for the resource
     "
+}
+
+validate_port(){
+    CASE=$1
+    if grep -q "$CASE" "`pwd`/manifest.kubefs"; then
+        return 1
+    fi
+    
+    return 0
 }
 
 parse_optional_params(){
     declare -A opts
-    while getopts "p:e:" opt; do
-        case ${opt} in
-            p)
-                opts["port"]=$OPTARG
+    
+    default_port=$1
+    default_entry=$2
+    shift 2
+
+    opts["--port"]="$default_port"
+    opts["--entry"]="$default_entry"
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --port)
+                opts["--port"]=$2
+                shift
                 ;;
-            e)
-                opts["entry"]=$OPTARG
-                ;;
-            \? )
-                echo "Invalid option: $OPTARG" 1>&2
+            --entry)
+                opts["--entry"]=$2
+                shift
                 ;;
         esac
+        shift
     done
 
     echo $(declare -p opts)
 }
 
-create_helper_func() {
-    FUNC=$1
-    TYPE=$2
-    NAME=$3
-    shift 3
-
-    if [ -z $NAME ]; then
-        default_helper 1 $NAME
-        return 0
-    fi
-
-    if [ -d "`pwd`/$NAME" ]; then
-        echo "A component with that name already exists, please try a different name"
-        return 0
-    fi
-
-    eval $(parse_optional_params $@)
-
-    # call specified function
-    echo "Creating $NAME..."
-    $FUNC $NAME
-    if [ $? -eq 1 ]; then
-        echo "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
-        rm -rf `pwd`/$NAME
-        return 0
-    fi
-
-    if [ $TYPE == "db" ]; then    
-        echo ""
-        echo "$NAME $FUNC was created successfully!"
-        (cd `pwd`/$NAME && echo "docker-repo=cassandra" >> scaffold.kubefs)
-        return 0
-    fi
+create_docker_repo(){
+    NAME=$1
+    echo "Creating Docker repository for $NAME..."
 
     output=$(pass show kubefs/config/docker > /dev/null 2>&1)
 
     if [ $? -eq 1 ]; then
-        echo "Docker configurations not found. Please run 'kubefs config docker' to login to docker ecosystem"
-        rm -rf `pwd`/$NAME
+        print_warning "Docker configurations not found. Please run 'kubefs config docker' to login to docker ecosystem"
         return 1
     fi
     
@@ -93,14 +76,13 @@ create_helper_func() {
         -H "Content-Type: application/json" \
         -d "{\"username\": \"$username\", \"password\": \"$password\"}")
 
-    token=$(echo $response | jq -r '.token')
-
-    if [ -z $token ]; then
-        echo "Failed to obtain Docker JWT token. Please try again."
+    if [ $? -ne 0 ]; then
+        print_error "Failed to login to Docker. Please try again."
         return 1
     fi
 
-    create_repo_response=$(curl -s "https://hub.docker.com/v2/repositories/" \
+    token=$(echo $response | jq -r '.token')
+    create_repo_response=$(curl -s -o /dev/null -w "%{http_code}" "https://hub.docker.com/v2/repositories/" \
         -H "Authorization: JWT $token" \
         -H "Content-Type: application/json" \
         --data "{
@@ -112,183 +94,190 @@ create_helper_func() {
         }"
     )
 
-    (cd `pwd`/$NAME && echo "docker-repo=$username/$NAME" >> scaffold.kubefs)
-    
-    echo ""
-    echo "$NAME $FUNC was created successfully!"
+    if [ "$create_repo_response" -ne 201 ]; then
+        print_error "Failed to create Docker repository for $NAME. Please try again."
+        return 1
+    fi
+
+    (cd "`pwd`/$NAME" && echo "docker-repo=$username/$NAME" >> scaffold.kubefs)
+
+    print_success "Docker repository for $NAME created successfully!"
     return 0
 }
 
-validate_port(){
-    CASE=$1
-    if grep -q "$CASE" "`pwd`/manifest.kubefs"; then
+create_helper_func() {
+    FUNC=$1
+    TYPE=$2
+    NAME=$3
+    shift 3
+
+    if [ -z $NAME ]; then
+        default_helper
+        return 0
+    fi
+
+    if [ -d "`pwd`/$NAME" ]; then
+        print_warning "A component with name $NAME already exists, please try a different name"
+        return 0
+    fi
+
+    # call specified function
+    echo "Creating $NAME..."
+    $FUNC $NAME $@
+    if [ $? -eq 1 ]; then
+        print_error "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
+        rm -rf "`pwd`/$NAME"
         return 1
     fi
-    
+
+    case $TYPE in
+        "api") 
+            create_docker_repo $NAME
+            if [ $? -eq 1 ]; then
+                print_error "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
+                rm -rf "`pwd`/$NAME"
+                remove_from_manifest $NAME
+                return 1
+            fi
+            
+            print_success "$TYPE $NAME was created successfully!"
+            ;;
+        "frontend")
+            create_docker_repo $NAME
+            if [ $? -eq 1 ]; then
+                print_error "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
+                rm -rf "`pwd`/$NAME"
+                remove_from_manifest $NAME
+                return 1
+            fi
+            
+            print_success "$TYPE $NAME was created successfully!"
+            ;;
+        "db") 
+            print_success "$TYPE $NAME was created successfully!"
+            ;;
+    esac
+
     return 0
 }
 
 create_db(){
     NAME=$1
+    CURRENT_DIR=`pwd`
 
-    PORT=9042
-
-    if [ -n "${opts["port"]}" ]; then
-        PORT=${opts["port"]}
-    fi
-    if [ -n "${opts["entry"]}" ]; then
-        echo "You can not set the entry file for a database. Please try again."
-        return 1
-    fi    
-
-    validate_port port=$PORT
-    if [ $? -eq 1 ]; then
-        echo "Port $PORT is already in use, please use a different port"
-        return 1
-    fi
-    
     SCAFFOLD=scaffold.kubefs
 
-    mkdir `pwd`/$NAME
+    eval $(parse_optional_params "9042" "none" $@)
 
-    ENTRY="127.0.0.1:$PORT"
-
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=docker-compose up" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD && echo "docker-run=docker-compose up" >> $SCAFFOLD)
+    validate_port "port=${opts["--port"]}"
+    if [ $? -eq 1 ]; then
+        print_warning "Port ${opts["--port"]} is already in use, please use a different port"
+        return 1
+    fi
     
-    sed -e "s/{{PORT}}/$PORT/" \
-        -e "s/{{HOST_PORT}}/$PORT/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "`pwd`/$NAME/docker-compose.yaml"
+    mkdir $CURRENT_DIR/$NAME
+    
+    sed -e "s/{{PORT}}/${opts["--port"]}/" \
+        -e "s/{{HOST_PORT}}/${opts["--port"]}/" \
+        "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
 
-    append_to_manifest $NAME $ENTRY $PORT "docker-compose up" db
+    (cd $CURRENT_DIR/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=${opts["--port"]}" >> $SCAFFOLD && echo "entry=" >> $SCAFFOLD && echo "command=" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD && echo "docker-run=docker-compose up" >> $SCAFFOLD)
+    append_to_manifest $NAME "" "${opts["--port"]}" "" db
 
     return 0
 }
 
 create_api() {
     NAME=$1
-
-    PORT=8080
-    ENTRY=main.go
-
-    if [ -n "${opts["port"]}" ]; then
-        PORT=${opts["port"]}
-    fi
-    if [ -n "${opts["entry"]}" ]; then
-        ENTRY=${opts["entry"]}
-    fi    
-
-    validate_port port=$PORT
-    if [ $? -eq 1 ]; then
-        echo "Port $PORT is already in use, please use a different port"
-        return 1
-    fi
+    CURRENT_DIR=`pwd`
     
     SCAFFOLD=scaffold.kubefs
 
-    mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
+    eval $(parse_optional_params "8080" "main.go" $@)
+
+    validate_port "port=${opts["--port"]}"
+    if [ $? -eq 1 ]; then
+        print_warning "Port ${opts["--port"]} is already in use, please use a different port"
+        return 1
+    fi
+
+    mkdir $CURRENT_DIR/$NAME
+    (cd $CURRENT_DIR/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
 
     if [ $? -ne 0 ]; then
         return 1
     fi
 
-    sed -e "s/{{PORT}}/$PORT/" \
+    sed -e "s/{{PORT}}/${opts["--port"]}/" \
         -e "s/{{NAME}}/$NAME/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-api.conf" > "`pwd`/$NAME/$ENTRY"
+        "$KUBEFS_CONFIG/scripts/templates/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
     
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=go run $ENTRY" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "go run $ENTRY" api
+    (cd $CURRENT_DIR/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=${opts["--entry"]}" >> $SCAFFOLD && echo "port=${opts["--port"]}" >> $SCAFFOLD && echo "command=go run ${opts["--entry"]}" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api
 
     return 0
 }
 
 create_frontend(){
     NAME=$1
+    CURRENT_DIR=`pwd`
 
-    PORT=3000
-    ENTRY=index.js
-
-    if [ -n "${opts["port"]}" ]; then
-        PORT=${opts["port"]}
-    fi
-    if [ -n "${opts["entry"]}" ]; then
-        echo "You can not set the entry file for a frontend. Please try again."
-        return 1
-    fi    
-
-    validate_port port=$PORT
-    if [ $? -eq 1 ]; then
-        echo "Port $PORT is already in use, please use a different port"
-        return 1
-    fi
-    
     SCAFFOLD=scaffold.kubefs
 
-    mkdir `pwd`/$NAME
-    (cd `pwd`/$NAME && npm init -y)
+    eval $(parse_optional_params "3000" "index.js" $@)
+
+    validate_port "port=${opts["--port"]}"
+    if [ $? -eq 1 ]; then
+        print_warning "Port ${opts["--port"]} is already in use, please use a different port"
+        return 1
+    fi
+
+    mkdir $CURRENT_DIR/$NAME
+    (cd $CURRENT_DIR/$NAME && npm init -y)
+    (cd $CURRENT_DIR/$NAME && jq ".main = \"${opts["--entry"]}\"" package.json > tmp.json && mv tmp.json package.json)
 
     if [ $? -ne 0 ]; then
-        echo "Error creating node.js/express application. Please try again."
         return 1
     fi
 
     (cd `pwd`/$NAME && npm install express && npm install dotenv && npm install nodemon)
-    
+
     if [ $? -ne 0 ]; then
-        echo "Error creating node.js/express application. Please try again."
         return 1
     fi
 
     sed -e "s/{{NAME}}/$NAME/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-frontend.conf" > "`pwd`/$NAME/$ENTRY"
+        "$KUBEFS_CONFIG/scripts/templates/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
     sed -e "s/{{PORT}}/$PORT/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-frontend-env.conf" > "`pwd`/$NAME/.env"
+        "$KUBEFS_CONFIG/scripts/templates/template-frontend-env.conf" > "$CURRENT_DIR/$NAME/.env"
 
-    (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "command=nodemon $ENTRY" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
-    append_to_manifest $NAME $ENTRY $PORT "nodemon $ENTRY" frontend
+    (cd $CURRENT_DIR/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=${opts["--entry"]}" >> $SCAFFOLD && echo "port=${opts["--port"]}" >> $SCAFFOLD && echo "command=nodemon ${opts["--entry"]}" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend
 
     return 0
 }
 
-append_to_manifest() {
-    CURRENT_DIR=`pwd`
-    NAME=$1
-    ENTRY=$2
-    PORT=$3
-    COMMAND=$4
-    TYPE=$5
-
-    echo "" >> $CURRENT_DIR/manifest.kubefs && echo "--" >> $CURRENT_DIR/manifest.kubefs
-    echo "name=$NAME" >> $CURRENT_DIR/manifest.kubefs
-    echo "entry=$ENTRY" >> $CURRENT_DIR/manifest.kubefs
-    echo "port=$PORT" >> $CURRENT_DIR/manifest.kubefs
-    echo "command=$COMMAND" >> $CURRENT_DIR/manifest.kubefs
-    echo "type"=$TYPE >> $CURRENT_DIR/manifest.kubefs
-}
-
 main(){
-    if [ -z $1 ]; then
-        default_helper 0
-        return 1
+    COMMAND=$1
+    shift
+    if [ -z $COMMAND ]; then
+        default_helper
+        return 0
     fi
 
-    # source helper functions 
     source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
     if [ $? -eq 1 ]; then
-        rm -rf `pwd`/$NAME
-        return 0
+        return 1
     fi
 
-    type=$1
-    shift
-    case $type in
-        "api") create_helper_func create_api $type $@;;
-        "frontend") create_helper_func create_frontend $type $@;;
-        "database") create_helper_func create_db $type $@;;
-        "--help") default_helper 0;;
-        *) default_helper 1 $type;;
+    case $COMMAND in
+        "api") create_helper_func create_api $COMMAND $@;;
+        "frontend") create_helper_func create_frontend $COMMAND $@;;
+        "database") create_helper_func create_db $COMMAND $@;;
+        "--help") default_helper;;
+        *) print_error "$COMMAND is not a valid command" && default_helper;;
     esac    
 }
 main $@
