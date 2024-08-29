@@ -66,7 +66,7 @@ create_helper_func() {
     if [ $TYPE == "db" ]; then    
         echo ""
         echo "$NAME $FUNC was created successfully!"
-        (cd `pwd`/$NAME && echo "docker-repo=null" >> scaffold.kubefs)
+        (cd `pwd`/$NAME && echo "docker-repo=cassandra" >> scaffold.kubefs)
         return 0
     fi
 
@@ -155,8 +155,7 @@ create_db(){
 
     (cd `pwd`/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=$PORT" >> $SCAFFOLD && echo "entry=$ENTRY" >> $SCAFFOLD && echo "command=docker-compose up" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD && echo "docker-run=docker-compose up" >> $SCAFFOLD)
     
-    sed -e "s/{{NAME}}/$NAME/g" \
-        -e "s/{{PORT}}/$PORT/" \
+    sed -e "s/{{PORT}}/$PORT/" \
         -e "s/{{HOST_PORT}}/$PORT/" \
         "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "`pwd`/$NAME/docker-compose.yaml"
 

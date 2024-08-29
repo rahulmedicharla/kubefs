@@ -1,14 +1,12 @@
 #!/bin/bash
 default_helper() {
-    if [ $1 -eq 1 ]; then
-        echo "${2} is not a valid argument, please follow types below"
-    fi
-
     echo "
-    kubefs config - customize your project & auth congifurations
+    kubefs config - configure kubefs environment and auth configurations
 
-    kubefs config list - list all configurations
-    kubefs config docker - configure docker configurations
+    Usage: kubefs config <COMMAND>
+        kubefs config list - list all configuration data
+        kubefs config docker - configure docker configurations
+        kubefs config --help - display this help message
     "
 }
 
@@ -52,29 +50,30 @@ docker_config(){
     )
 
     echo "$docker_auth" | pass insert -m kubefs/config/docker
+
+    return 0
 }
 
 main(){
-    if [ -z $1 ]; then
-        default_helper 0
-        return 1
+    COMMAND=$1
+    shift
+    if [ -z $COMMAND ]; then
+        default_helper
+        return 0
     fi
 
-    # source helper functions 
     source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
     if [ $? -eq 1 ]; then
-        return 0
+        return 1
     fi
 
-    type=$1
-    shift
-    case $type in
+    case $COMMAND in
         "list") list_configurations;;
         "docker") docker_config $@;;
-        "--help") default_helper 0;;
-        *) default_helper 1 $type;;
+        "--help") default_helper;;
+        *) default_helper;;
     esac
 }
 

@@ -1,14 +1,12 @@
 #!/bin/bash
 default_helper() {
-    if [ $1 -eq 1 ]; then
-        echo "${2} is not a valid argument, please follow types below"
-    fi
-
     echo "
-    kubefs describe - describe the information about some or all of your constructs
+    kubefs describe - describe the information about some or all of your resources
 
-    kubefs describe all - describe the information for all constructs
-    kubefs describe <name> - describe the information about the construct with given name
+    Usage: kubefs describe <COMMAND>
+        kubefs describe all - describe the information for all resources
+        kubefs describe <name> - describe the information about the resources with given name
+        kubefs describe --help - display this help message
     "
 }
 
@@ -19,17 +17,14 @@ describe_all(){
     for ((i=0; i<${#manifest_data[@]}; i++)); do
         if [ "${manifest_data[$i]}" == "--" ]; then
             name=${manifest_data[$i+1]#*=}
-            entry=${manifest_data[$i+2]#*=}
-            port=${manifest_data[$i+3]#*=}
-            command=${manifest_data[$i+4]#*=}
-            type=${manifest_data[$i+5]#*=}
-            
-            echo "Name:$name"
-            echo "Entry:$entry"
-            echo "Port:$port"
-            echo "Command:$command"
-            echo "Type:$type"
+
+            describe_unique $name
             echo ""
+
+            if [ $? -eq 1 ]; then
+                print_error "Error occured describing $NAME. Please try again or use 'kubefs --help' or 'kubefs describe' for more information."
+                return 0
+            fi
         fi
     done
 
@@ -41,45 +36,44 @@ describe_unique(){
     CURRENT_DIR=`pwd`
 
     if [ -z $NAME ]; then
-        default_helper 1 $NAME
+        default_helper
         return 1
     fi
 
     if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
-        default_helper 1 $NAME
+        print_error "$NAME is not a valid resource"
+        default_helper
         return 1
     fi
 
     eval "$(parse_scaffold "$NAME")"
 
-    echo "Name:${scaffold_data["name"]}"
-    echo "Entry:${scaffold_data["entry"]}"
-    echo "Port:${scaffold_data["port"]}"
-    echo "Command:${scaffold_data["command"]}"
-    echo "Type:${scaffold_data["type"]}"
-    echo "Docker Run:${scaffold_data["docker-run"]}"
+    for key in "${!scaffold_data[@]}"; do
+        echo "$key: ${scaffold_data[$key]}"
+    done
 
+    return 0
 }
 
 main(){
-    if [ -z $1 ]; then
-        default_helper 0
-        return 1
+    COMMAND=$1
+    shift
+    if [ -z $COMMAND ]; then
+        default_helper
+        return 0
     fi
 
-    # source helper functions 
     source $KUBEFS_CONFIG/scripts/helper.sh
     validate_project
 
     if [ $? -eq 1 ]; then
-        return 0
+        return 1
     fi
 
-    type=$1
-    case $type in
+    case $COMMAND in
         "all")  describe_all;;
-        "--help") default_helper 0;;
-        *) describe_unique $type;;
+        "--help") default_helper;;
+        *) describe_unique $COMMAND;;
     esac
 }
 

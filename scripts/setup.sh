@@ -1,12 +1,9 @@
 #!/bin/bash
 default_helper() {
-    TYPE=$1
-    if [ $TYPE -eq 1 ]; then
-        echo "${2} is not a valid argument, please follow types below"
-    fi
-
     echo "
     kubefs setup - download dependencies & setup configurations for first time.
+    
+    Usage: kubefs setup
     "
 }
 
@@ -90,14 +87,16 @@ download_dependencies(){
 }
 
 init_project() {
+    SCRIPT_DIR=$1
+    source $SCRIPT_DIR/helper.sh
 
     if [ ! -z $KUBEFS_CONFIG ]; then
-        echo "Kubefs has already been setup. use 'kubefs --help' for more information"
+        print_warning "Kubefs has already been setup. use 'kubefs --help' for more information"
         return 0
     fi
 
     if grep -q "export KUBEFS_CONFIG" ~/.bashrc; then
-        echo "Kubefs has already been setup. run 'source ~/.bashrc' to start using kubefs"
+        print_warning "Kubefs has already been setup. run 'source ~/.bashrc' to start using kubefs"
         return 0
     fi
 

@@ -1,3 +1,4 @@
+#!/bin/bash
 default_helper() {
     echo "
     kubefs compile - build and push docker images for all components
@@ -19,15 +20,16 @@ parse_optional_params(){
     opts["--no-build"]=false
     opts["--no-push"]=false
 
-    for arg in "$@"; do
-        case $arg in
+    while [ $# -gt 0 ]; do
+        case $1 in
             --no-build)
-                opts["$arg"]=true
+                opts["--no-build"]=true
                 ;;
             --no-push)
-                opts["$arg"]=true
+                opts["--no-push"]=true
                 ;;
         esac
+        shift
     done
 
     echo $(declare -p opts)
@@ -127,6 +129,9 @@ build(){
         *) default_helper;;
     esac
 
+    # remove old docker image
+    docker rmi $NAME > /dev/null 2>&1
+
     # build docker image
     (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .)
 
@@ -181,7 +186,7 @@ main(){
     shift
     if [ -z $COMMAND ]; then
         default_helper
-        return 1
+        return 0
     fi
 
     source $KUBEFS_CONFIG/scripts/helper.sh

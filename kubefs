@@ -13,11 +13,10 @@ default_helper() {
         kubefs compile - build and push the docker images for resources
         kubefs config - configure the kubefs environment & set auth credentials
         kubefs create - easily create backend, frontend, & db constructs to be used within your application
-        kubefs deploy - deploy the build targets onto the cluster!
+        kubefs deploy - create helm charts & deploy the build targets onto the cluster!
         kubefs describe - describe the information about a construct
-        kubefs execute - execute components locally to test your code
-        kubefs execute-docker - execute resources as docker containers
         kubefs init - download all required dependencies & set up configuration files
+        kubefs run - run components locally or in docker containers to test your code
         kubefs setup - setup kubefs for the first time
         kubefs undeploy - undeploy components from release
     "
@@ -49,9 +48,8 @@ main(){
         "create") source_scripts ${KUBEFS_CONFIG}/scripts/create.sh $@;;
         "deploy") source_scripts ${KUBEFS_CONFIG}/scripts/deploy.sh $@;;
         "describe") source_scripts ${KUBEFS_CONFIG}/scripts/describe.sh $@;;
-        "execute") source_scripts ${KUBEFS_CONFIG}/scripts/execute.sh $@;;
-        "exec-docker") source_scripts ${KUBEFS_CONFIG}/scripts/exec-docker.sh $@;;
         "init") source_scripts ${KUBEFS_CONFIG}/scripts/init.sh $@;;
+        "run") source_scripts ${KUBEFS_CONFIG}/scripts/run.sh $@;;
         "setup") source $KUBEFS_CONFIG/scripts/setup.sh;;
         "undeploy") source_scripts ${KUBEFS_CONFIG}/scripts/undeploy.sh $@;;
         "--help") default_helper 0;;
