@@ -9,14 +9,14 @@ default_helper() {
     echo "
     kubefs - a cli tool to create & deploy full stack applications onto kubernetes clusters
 
-    Usage: kubefs <command> [options]
+    Usage: kubefs <OPTION>
+        kubefs compile - build and push the docker images for resources
+        kubefs config - configure the kubefs environment & set auth credentials
         kubefs create - easily create backend, frontend, & db constructs to be used within your application
-        kubefs docker - create, test, & push docker images for created resources to be deployed onto the clusters
-        kubefs deploy - deploy the build targets onto the cluster!
+        kubefs deploy - create helm charts & deploy the build targets onto the cluster!
         kubefs describe - describe the information about a construct
-        kubefs exec - execute components to test your code
-        kubefs helmify - create helm charts for your components
-        kubefs init <name> - download all required dependencies & set up configuration files
+        kubefs init - download all required dependencies & set up configuration files
+        kubefs run - run components locally or in docker containers to test your code
         kubefs setup - setup kubefs for the first time
         kubefs undeploy - undeploy components from release
     "
@@ -40,21 +40,20 @@ main(){
         return 0
     fi
 
-    command=$1
+    OPTION=$1
     shift
-    case $command in
+    case $OPTION in
+        "compile") source_scripts ${KUBEFS_CONFIG}/scripts/compile.sh $@;;
         "config") source_scripts ${KUBEFS_CONFIG}/scripts/config.sh $@;;
         "create") source_scripts ${KUBEFS_CONFIG}/scripts/create.sh $@;;
         "deploy") source_scripts ${KUBEFS_CONFIG}/scripts/deploy.sh $@;;
         "describe") source_scripts ${KUBEFS_CONFIG}/scripts/describe.sh $@;;
-        "docker") source_scripts ${KUBEFS_CONFIG}/scripts/docker.sh $@;;
-        "exec") source_scripts ${KUBEFS_CONFIG}/scripts/exec.sh $@;;
-        "helmify") source_scripts ${KUBEFS_CONFIG}/scripts/helmify.sh $@;;
         "init") source_scripts ${KUBEFS_CONFIG}/scripts/init.sh $@;;
+        "run") source_scripts ${KUBEFS_CONFIG}/scripts/run.sh $@;;
         "setup") source $KUBEFS_CONFIG/scripts/setup.sh;;
         "undeploy") source_scripts ${KUBEFS_CONFIG}/scripts/undeploy.sh $@;;
         "--help") default_helper 0;;
-        *) default_helper 1 $command;;
+        *) default_helper 1 $OPTION;;
     esac
 }
 

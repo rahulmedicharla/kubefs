@@ -1,26 +1,27 @@
 default_helper(){
-    if [ $1 -eq 1 ]; then
-        echo "${2} is not a valid argument, please follow types below"
-    fi
-
     echo "
     kubefs init - initialize a new kubefs project
 
-    kubefs init <name> - initialize a new kubefs project"
+    Usage: kubefs init <COMMAND>
+        kubefs init <name> - initialize a new kubefs project
+    "
 }
 
 init_project() {
-    if [ -z $1 ]; then
-        default_helper 0
+    COMMAND=$1
+    if [ -z $COMMAND ]; then
+        default_helper
         return 1
     fi
 
-    mkdir $1 && cd $1
+    source $KUBEFS_CONFIG/scripts/helper.sh
+
+    mkdir $COMMAND && cd $COMMAND
 
     touch manifest.kubefs
-    echo "KUBEFS_NAME=$1" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
+    echo "KUBEFS_NAME=$COMMAND" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
 
-    echo "Successfully created $1 project"
+    print_success "Successfully created $COMMAND project!"
 }
 
 init_project $@
