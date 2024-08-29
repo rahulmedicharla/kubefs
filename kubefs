@@ -16,6 +16,7 @@ default_helper() {
         kubefs deploy - create helm charts & deploy the build targets onto the cluster!
         kubefs describe - describe the information about a construct
         kubefs init - download all required dependencies & set up configuration files
+        kubefs remove - remove resources locally and from docker hub
         kubefs run - run components locally or in docker containers to test your code
         kubefs setup - setup kubefs for the first time
         kubefs undeploy - undeploy components from release
@@ -49,6 +50,7 @@ main(){
         "deploy") source_scripts ${KUBEFS_CONFIG}/scripts/deploy.sh $@;;
         "describe") source_scripts ${KUBEFS_CONFIG}/scripts/describe.sh $@;;
         "init") source_scripts ${KUBEFS_CONFIG}/scripts/init.sh $@;;
+        "remove") source_scripts ${KUBEFS_CONFIG}/scripts/remove.sh $@;;
         "run") source_scripts ${KUBEFS_CONFIG}/scripts/run.sh $@;;
         "setup") source $KUBEFS_CONFIG/scripts/setup.sh;;
         "undeploy") source_scripts ${KUBEFS_CONFIG}/scripts/undeploy.sh $@;;
