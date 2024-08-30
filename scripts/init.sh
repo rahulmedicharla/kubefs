@@ -16,10 +16,17 @@ init_project() {
 
     source $KUBEFS_CONFIG/scripts/helper.sh
 
+    echo "Creating $COMMAND project..."
+    echo "Please enter a description for the project: "
+    read DESCRIPTION
+
     mkdir $COMMAND && cd $COMMAND
 
-    touch manifest.kubefs
-    echo "KUBEFS_NAME=$COMMAND" >> manifest.kubefs && echo "KUBEFS_ROOT=`pwd`" >> manifest.kubefs
+    touch manifest.yaml
+    yq e ".kubefs-name = \"${COMMAND}\"" -i manifest.yaml
+    yq e ".kubefs-version = \"0.0.1\"" -i manifest.yaml
+    yq e ".kubefs-description = \"${DESCRIPTION}\"" -i manifest.yaml
+    yq e ".resources = []" -i manifest.yaml
 
     print_success "Successfully created $COMMAND project!"
 }

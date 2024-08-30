@@ -15,47 +15,51 @@ default_helper() {
 
 helmify(){
     NAME=$1
-    eval "$(parse_scaffold $NAME)"
+    
+    docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
+    port=$(yq e '.project.port' $CURRENT_DIR/$NAME/scaffold.yaml)
+    docker_repo=$(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml)
+    type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-    if [ -z "${scaffold_data["docker-run"]}" ]; then
+    if [ "$docker_run" == "null" ]; then
         print_warning "Docker Image is not built for $NAME component. Please build and push the image"
         return 1
     fi
 
     helmify_database(){
         NAME=$1
-        cp -r $KUBEFS_CONFIG/scripts/templates/deploy-db $CURRENT_DIR/$NAME/deploy
+        cp -r $KUBEFS_CONFIG/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
         sed -e "s#{{NAME}}#$NAME#" \
             -e "s#{{IMAGE}}#cassandra#" \
-            -e "s#{{PORT}}#${scaffold_data["port"]}#" \
+            -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#None#" \
-            "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+            "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
     }
 
     helmify_frontend(){
         NAME=$1
-        cp -r $KUBEFS_CONFIG/scripts/templates/deploy-fe $CURRENT_DIR/$NAME/deploy
+        cp -r $KUBEFS_CONFIG/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
         sed -e "s#{{NAME}}#$NAME#" \
-            -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
-            -e "s#{{PORT}}#${scaffold_data["port"]}#" \
+            -e "s#{{IMAGE}}#${docker_repo}#" \
+            -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
-            "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+            "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
     }
 
     helmify_api(){
         NAME=$1
-        cp -r $KUBEFS_CONFIG/scripts/templates/deploy-api $CURRENT_DIR/$NAME/deploy
+        cp -r $KUBEFS_CONFIG/scripts/templates/deployment/api $CURRENT_DIR/$NAME/deploy
         sed -e "s#{{NAME}}#$NAME#" \
-            -e "s#{{IMAGE}}#${scaffold_data["docker-repo"]}#" \
-            -e "s#{{PORT}}#${scaffold_data["port"]}#" \
+            -e "s#{{IMAGE}}#${docker_repo}#" \
+            -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
-            "$KUBEFS_CONFIG/scripts/templates/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+            "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
     }
     
-    case "${scaffold_data["type"]}" in
+    case "$type" in
         "api") helmify_api $NAME;;
         "frontend") helmify_frontend $NAME;;
         "db") helmify_database $NAME;;
@@ -87,24 +91,25 @@ parse_optional_params(){
 deploy_all(){
     echo "Deploying all components..."
     CURRENT_DIR=`pwd`
-    eval "$(parse_manifest $CURRENT_DIR)"
+
     eval "$(parse_optional_params $@)"
+
+    manifest_data=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
+
 
     if ! colima status > /dev/null 2>&1; then
         print_warning "Colima is not running. Starting Colima with 'colima start -k'"
         colima start
     fi
 
-    for ((i=0; i<${#manifest_data[@]}; i++)); do
-        if [ "${manifest_data[$i]}" == "--" ]; then
-            name=${manifest_data[$i+1]#*=}
+    for name in "${manifest_data[@]}"; do
 
-            deploy_unique $name "${opts[@]}"
+        deploy_unique $name "${opts[@]}"
 
-            if [ $? -eq 1 ]; then
-                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
-                return 0
-            fi
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying  $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
         fi
     done
 
@@ -142,7 +147,7 @@ deploy_unique(){
         return 1
     fi  
 
-    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
         print_error "$NAME is not a valid resource"
         default_helper
         return 1

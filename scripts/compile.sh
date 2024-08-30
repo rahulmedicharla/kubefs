@@ -38,18 +38,16 @@ parse_optional_params(){
 compile_all(){
     echo "Compiling all resources..."
     CURRENT_DIR=`pwd`
-    eval "$(parse_manifest $CURRENT_DIR)"
 
-    for ((i=0; i<${#manifest_data[@]}; i++)); do
-        if [ "${manifest_data[$i]}" == "--" ]; then
-            name=${manifest_data[$i+1]#*=}
+    manifest_data=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-            compile_unique $name $@
+    for name in "${manifest_data[@]}"; do
+        compile_unique $name $@
 
-            if [ $? -eq 1 ]; then
-                print_error "Error occured building $NAME. Please try again or use 'kubefs --help' for more information."
-                return 0
-            fi
+        if [ $? -eq 1 ]; then
+            print_error "Error occured compiling $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
         fi
     done
 
@@ -69,7 +67,7 @@ compile_unique(){
         return 1
     fi
 
-    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
         print_error "$NAME is not a valid resource"
         default_helper
         return 1
@@ -104,27 +102,39 @@ build(){
     CURRENT_DIR=`pwd`
     echo "Building $NAME..."
 
-    eval "$(parse_scaffold "$NAME")"
-
-    case "${scaffold_data["type"]}" in
+    type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
+    port=$(yq e '.project.port' $CURRENT_DIR/$NAME/scaffold.yaml)
+    entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
+    docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
+    
+    case "$type" in
         "api")
-            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{HOST_PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+            sed -e "s/{{PORT}}/${port}/" \
+                -e "s/{{NAME}}/$NAME/" \
+                "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+            sed -e "s/{{PORT}}/${port}/" \
+                -e "s/{{HOST_PORT}}/${port}/" \
+                -e "s/{{NAME}}/$NAME/" \
+                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "frontend")
-            sed -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{ENTRY}}/${scaffold_data["entry"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-            sed -e "s/{{HOST_PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{PORT}}/${scaffold_data["port"]}/" \
-                -e "s/{{NAME}}/${scaffold_data["name"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+            sed -e "s/{{PORT}}/${port}/" \
+                -e "s/{{ENTRY}}/${entry}/" \
+                "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+            sed -e "s/{{HOST_PORT}}/${port}/" \
+                -e "s/{{PORT}}/${port}/" \
+                -e "s/{{NAME}}/$NAME/" \
+                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
         "db")
-            print_warning "Don't need to build docker image for database components."
+            sed -e "s/{{HOST_PORT}}/${port}/" \
+                -e "s/{{PORT}}/${port}/" \
+                "$KUBEFS_CONFIG/scripts/templates/local-db/template-db-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+            
+            if [ "$docker_run" == "null" ]; then
+                yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker network rm ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
+            fi
+            print_success "$NAME prepared successfully"
             return 0;;
         *) default_helper;;
     esac
@@ -140,8 +150,10 @@ build(){
         return 1
     fi
 
-    if [ -z "${scaffold_data["docker-run"]}" ]; then
-        echo "docker-run=docker compose up" >> $CURRENT_DIR/$NAME/scaffold.kubefs
+    if [ "$docker_run" == "null" ]; then
+        yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+        yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+        yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rmi $NAME > /dev/null 2>&1", "docker rmi ${docker_repo} > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
     fi
 
     print_success "$NAME built successfully"
@@ -154,22 +166,24 @@ push(){
     CURRENT_DIR=`pwd`
     echo "Pushing $NAME..."
 
-    eval "$(parse_scaffold "$NAME")"
+    type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
+    docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
+    docker_repo=$(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-    if [ -z "${scaffold_data["docker-run"]}" ]; then
+    if [ "$docker_run" == "null" ]; then
         print_warning "Docker image not built for $NAME, please build using 'kubefs docker build'. "
         return 1
     fi
 
-    if [ "${scaffold_data["type"]}" == "db" ]; then
+    if [ "$type" == "db" ]; then
         print_warning "You don't need to push a database component to docker hub. Use 'kubefs docker exec' to run the component"
         return 0
     fi
 
     echo "Pushing $NAME component to docker hub..."
 
-    docker tag $NAME "${scaffold_data["docker-repo"]}"
-    sudo docker push "${scaffold_data["docker-repo"]}"
+    docker tag $NAME "$docker_repo"
+    sudo docker push "$docker_repo"
 
     if [ $? -eq 1 ]; then
         print_error "$NAME component was not pushed to docker hub. Please try again."

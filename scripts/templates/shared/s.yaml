@@ -1,0 +1,18 @@
+project:
+  name:
+  entry: 
+  port: 
+  type:
+  docker-repo: 
+
+up:
+  local:
+  docker:
+
+down:
+  local:
+  docker:
+
+remove:
+  local:
+  docker:

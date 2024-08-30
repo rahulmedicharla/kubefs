@@ -16,7 +16,7 @@ default_helper() {
 
 validate_port(){
     CASE=$1
-    if grep -q "$CASE" "`pwd`/manifest.kubefs"; then
+    if grep -q "$CASE" "`pwd`/manifest.yaml"; then
         return 1
     fi
     
@@ -99,7 +99,7 @@ create_docker_repo(){
         return 1
     fi
 
-    (cd "`pwd`/$NAME" && echo "docker-repo=$username/$NAME" >> scaffold.kubefs)
+    (cd "`pwd`/$NAME" && yq e ".project.docker-repo = \"$username/$NAME\"" "scaffold.yaml" -i)
 
     print_success "Docker repository for $NAME created successfully!"
     return 0
@@ -120,6 +120,9 @@ create_helper_func() {
         print_warning "A component with name $NAME already exists, please try a different name"
         return 0
     fi
+
+    NAME="$(yq e '.kubefs-name' "`pwd`/manifest.yaml")-$NAME"
+    
 
     # call specified function
     echo "Creating $NAME..."
@@ -165,7 +168,7 @@ create_db(){
     NAME=$1
     CURRENT_DIR=`pwd`
 
-    SCAFFOLD=scaffold.kubefs
+    SCAFFOLD=scaffold.yaml
 
     eval $(parse_optional_params "9042" "none" $@)
 
@@ -177,11 +180,9 @@ create_db(){
     
     mkdir $CURRENT_DIR/$NAME
     
-    sed -e "s/{{PORT}}/${opts["--port"]}/" \
-        -e "s/{{HOST_PORT}}/${opts["--port"]}/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-db-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
-
-    (cd $CURRENT_DIR/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "port=${opts["--port"]}" >> $SCAFFOLD && echo "entry=" >> $SCAFFOLD && echo "command=" >> $SCAFFOLD && echo "type=db" >> $SCAFFOLD && echo "docker-run=docker-compose up" >> $SCAFFOLD)
+    (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     append_to_manifest $NAME "" "${opts["--port"]}" "" db
 
     return 0
@@ -191,7 +192,7 @@ create_api() {
     NAME=$1
     CURRENT_DIR=`pwd`
     
-    SCAFFOLD=scaffold.kubefs
+    SCAFFOLD=scaffold.yaml
 
     eval $(parse_optional_params "8080" "main.go" $@)
 
@@ -210,9 +211,13 @@ create_api() {
 
     sed -e "s/{{PORT}}/${opts["--port"]}/" \
         -e "s/{{NAME}}/$NAME/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
-    
-    (cd $CURRENT_DIR/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=${opts["--entry"]}" >> $SCAFFOLD && echo "port=${opts["--port"]}" >> $SCAFFOLD && echo "command=go run ${opts["--entry"]}" >> $SCAFFOLD && echo "type=api" >> $SCAFFOLD)
+        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
+
+    (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"api\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
     append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api
 
     return 0
@@ -222,7 +227,7 @@ create_frontend(){
     NAME=$1
     CURRENT_DIR=`pwd`
 
-    SCAFFOLD=scaffold.kubefs
+    SCAFFOLD=scaffold.yaml
 
     eval $(parse_optional_params "3000" "index.js" $@)
 
@@ -247,11 +252,15 @@ create_frontend(){
     fi
 
     sed -e "s/{{NAME}}/$NAME/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
+        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
     sed -e "s/{{PORT}}/$PORT/" \
-        "$KUBEFS_CONFIG/scripts/templates/template-frontend-env.conf" > "$CURRENT_DIR/$NAME/.env"
+        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-env.conf" > "$CURRENT_DIR/$NAME/.env"
 
-    (cd $CURRENT_DIR/$NAME && echo "name=$NAME" >> $SCAFFOLD && echo "entry=${opts["--entry"]}" >> $SCAFFOLD && echo "port=${opts["--port"]}" >> $SCAFFOLD && echo "command=nodemon ${opts["--entry"]}" >> $SCAFFOLD && echo "type=frontend" >> $SCAFFOLD)
+    (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"frontend\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
     append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend
 
     return 0
