@@ -149,6 +149,7 @@ remove_unique(){
 
         if [ "${scaffold_data["type"]}" == "db" ]; then
             docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1
+            docker network rm ${NAME}_cassandra_network > /dev/null 2>&1
         fi
 
         rm -rf $CURRENT_DIR/$NAME
