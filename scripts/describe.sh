@@ -12,19 +12,17 @@ default_helper() {
 
 describe_all(){
     CURRENT_DIR=`pwd`
-    eval "$(parse_manifest $CURRENT_DIR)"
 
-    for ((i=0; i<${#manifest_data[@]}; i++)); do
-        if [ "${manifest_data[$i]}" == "--" ]; then
-            name=${manifest_data[$i+1]#*=}
+    manifest_data=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-            describe_unique $name
-            echo ""
+    for name in "${manifest_data[@]}"; do
+        describe_unique $name
+        echo ""
 
-            if [ $? -eq 1 ]; then
-                print_error "Error occured describing $NAME. Please try again or use 'kubefs --help' or 'kubefs describe' for more information."
-                return 0
-            fi
+        if [ $? -eq 1 ]; then
+            print_error "Error occured compiling $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
         fi
     done
 
@@ -40,16 +38,17 @@ describe_unique(){
         return 1
     fi
 
-    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
         print_error "$NAME is not a valid resource"
         default_helper
         return 1
     fi
 
-    eval "$(parse_scaffold "$NAME")"
+    project_info=$(yq e '.project' $CURRENT_DIR/$NAME/scaffold.yaml)
+    IFS=$'\n' read -r -d '' -a project_info <<< "$project_info"
 
-    for key in "${!scaffold_data[@]}"; do
-        echo "$key: ${scaffold_data[$key]}"
+    for info in "${project_info[@]}"; do
+        echo $info
     done
 
     return 0

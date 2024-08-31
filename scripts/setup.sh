@@ -65,6 +65,11 @@ download_dependencies(){
         brew install jq
     fi
 
+    if !(command -v yq &> /dev/null); then
+        echo "Downloading yq..."
+        brew install yq
+    fi
+
     if !(command -v curl &> /dev/null); then
         echo "Downloading curl..."
         brew install curl

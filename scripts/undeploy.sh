@@ -40,20 +40,20 @@ parse_optional_params(){
 
 undeploy_all(){
     echo "Undeploying all components..."
+
     CURRENT_DIR=`pwd`
-    eval "$(parse_manifest $CURRENT_DIR)"
     eval "$(parse_optional_params $@)"
 
-    for ((i=0; i<${#manifest_data[@]}; i++)); do
-        if [ "${manifest_data[$i]}" == "--" ]; then
-            name=${manifest_data[$i+1]#*=}
+    manifest_data=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-            undeploy_unique $name "${opts[@]}"
+    for name in "${manifest_data[@]}"; do
 
-            if [ $? -eq 1 ]; then
-                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
-                return 0
-            fi
+        undeploy_unique $name "${opts[@]}"
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 0
         fi
     done
 
@@ -94,7 +94,7 @@ undeploy_unique(){
         return 1
     fi  
 
-    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.kubefs" ]; then
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
         print_error "$NAME is not a valid resource"
         default_helper
         return 1
