@@ -28,12 +28,23 @@ download_dependencies(){
         echo '''export PATH="$PATH:${GOPATH}/bin:${GOROOT}/bin"''' >> ~/.bashrc
         source ~/.bashrc
         brew install go
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install go. Exiting..."
+            return 1
+        fi
     fi
 
     # prompt to download colima
     if !(command -v colima &> /dev/null); then
         echo "Downloading colima..."
         brew install colima
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install colima. Exiting..."
+            return 1
+        fi
+
         colima start --kubernetes
         kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
         colima stop
@@ -43,57 +54,107 @@ download_dependencies(){
     if !(command -v docker &> /dev/null); then
         echo "Downloading docker..."
         brew install docker
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install docker. Exiting..."
+            return 1
+        fi
     fi 
 
     if !(command -v docker compose &> /dev/null); then
         echo "Downloading docker compose..."
         brew install docker-compose
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install docker-compose. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v node &> /dev/null); then
         echo "Downloading node..."
         brew install node
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install node. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v cassandra &> /dev/null); then
         echo "Downloading cassandra..."
         brew install cassandra
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install cassandra. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v jq &> /dev/null); then
         echo "Downloading jq..."
         brew install jq
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install jq. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v yq &> /dev/null); then
         echo "Downloading yq..."
         brew install yq
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install yq. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v curl &> /dev/null); then
         echo "Downloading curl..."
         brew install curl
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install curl. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v pass &> /dev/null); then
         echo "Downloading pass..."
         brew install pass
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install pass. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v helm &> /dev/null); then
         echo "Downloading helm..."
         brew install helm
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install helm. Exiting..."
+            return 1
+        fi
     fi
 
     if !(command -v kubectl &> /dev/null); then
         echo "Downloading kubectl..."
         brew install kubectl
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install kubectl. Exiting..."
+            return 1
+        fi
     fi
 }
 
 init_project() {
     SCRIPT_DIR=$1
-    source $SCRIPT_DIR/helper.sh
+    source $SCRIPT_DIR/scripts/helper.sh
 
     if [ ! -z $KUBEFS_CONFIG ]; then
         print_warning "Kubefs has already been setup. use 'kubefs --help' for more information"
@@ -107,6 +168,11 @@ init_project() {
 
     download_dependencies
 
+    if [ $? -ne 0 ]; then
+        echo "Failed to download dependencies. Exiting..."
+        return 1
+    fi
+
     echo "export KUBEFS_CONFIG="$SCRIPT_DIR"" >> ~/.bashrc
 
     echo "" && echo "Account creation successful!"
@@ -116,7 +182,7 @@ init_project() {
 }
 
 main(){
-    SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"  
+    SCRIPT_DIR=$1
     init_project $SCRIPT_DIR
 }
 

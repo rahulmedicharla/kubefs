@@ -42,6 +42,7 @@ main(){
     fi
 
     OPTION=$1
+    SCRIPT_DIR=$(dirname $0)
     shift
     case $OPTION in
         "compile") source_scripts ${KUBEFS_CONFIG}/scripts/compile.sh $@;;
@@ -52,7 +53,7 @@ main(){
         "init") source_scripts ${KUBEFS_CONFIG}/scripts/init.sh $@;;
         "remove") source_scripts ${KUBEFS_CONFIG}/scripts/remove.sh $@;;
         "run") source_scripts ${KUBEFS_CONFIG}/scripts/run.sh $@;;
-        "setup") source $KUBEFS_CONFIG/scripts/setup.sh;;
+        "setup") source $SCRIPT_DIR/scripts/setup.sh $SCRIPT_DIR;;
         "undeploy") source_scripts ${KUBEFS_CONFIG}/scripts/undeploy.sh $@;;
         "--help") default_helper 0;;
         *) default_helper 1 $OPTION;;

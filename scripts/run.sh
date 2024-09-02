@@ -3,7 +3,7 @@ default_helper() {
     echo "
     kubefs run - run a resource locally or in the docker containers
 
-    Usage: kubefs run <local_run> [ARGS]
+    Usage: kubefs run <COMMAND> [ARGS]
         kubefs run all - run all resources locally or in the docker containers
         kubefs run <name> - run specific resource locally or in the docker containers
         kubefs run --help - display this help message
