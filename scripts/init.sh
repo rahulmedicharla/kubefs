@@ -27,6 +27,7 @@ init_project() {
     yq e ".kubefs-version = \"0.0.1\"" -i manifest.yaml
     yq e ".kubefs-description = \"${DESCRIPTION}\"" -i manifest.yaml
     yq e ".resources = []" -i manifest.yaml
+    yq e ".environment = []" -i manifest.yaml
 
     print_success "Successfully created $COMMAND project!"
 }

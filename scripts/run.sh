@@ -44,6 +44,13 @@ run_all(){
     manifest_data=$(yq e '.resources[] | .name + ":" + .type' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
+    env_vars=$(yq e '.resources[].env' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+
+    for env_var in "${env_vars[@]}"; do
+        export $env_var
+    done
+
     exit_flag=0
 
     for project_info in "${manifest_data[@]}"; do
@@ -94,7 +101,6 @@ run_unique(){
     local_run=$(yq e '.up.local' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-
     if [ "${opts["--platform"]}" == "docker" ]; then
         
         echo "Running $NAME component on port $port using docker image $NAME..."
@@ -103,7 +109,11 @@ run_unique(){
             echo "Connect to $NAME using 'docker exec -it $NAME-container-1 cqlsh'"
         fi
 
-        (cd $CURRENT_DIR/$NAME && $docker_run)
+        (cd $CURRENT_DIR/$NAME && $docker_run > /dev/null 2>&1)
+        if [ $? -ne 0 ]; then
+            print_error "Error occured running $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
 
     else
 
@@ -111,6 +121,10 @@ run_unique(){
         echo "Use Ctrl C. to stop serving $NAME"
 
         (cd $CURRENT_DIR/$NAME && $local_run > /dev/null 2>&1)
+        if [ $? -ne 0 ]; then
+            print_error "Error occured running $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
     fi
 
     return 0
@@ -145,6 +159,13 @@ run_helper(){
         print_error "No local_run specified for $name."
         return 0
     fi
+
+    env_vars=$(yq e '.resources[].env' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+
+    for env_var in "${env_vars[@]}"; do
+        export $env_var
+    done
 
     run_unique $name "${opts[@]}"
 
