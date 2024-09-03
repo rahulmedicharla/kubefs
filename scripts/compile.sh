@@ -107,6 +107,9 @@ build(){
     entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
     
+    env_vars=$(yq e '.resources[].env' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+
     case "$type" in
         "api")
             sed -e "s/{{PORT}}/${port}/" \
@@ -115,7 +118,12 @@ build(){
             sed -e "s/{{PORT}}/${port}/" \
                 -e "s/{{HOST_PORT}}/${port}/" \
                 -e "s/{{NAME}}/$NAME/" \
-                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+
+            for env in "${env_vars[@]}"; do
+                yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            done
+            ;;  
         "frontend")
             sed -e "s/{{PORT}}/${port}/" \
                 -e "s/{{ENTRY}}/${entry}/" \
@@ -123,7 +131,12 @@ build(){
             sed -e "s/{{HOST_PORT}}/${port}/" \
                 -e "s/{{PORT}}/${port}/" \
                 -e "s/{{NAME}}/$NAME/" \
-                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml";;
+                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+            
+            for env in "${env_vars[@]}"; do
+                yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            done    
+            ;;
         "db")
             sed -e "s/{{HOST_PORT}}/${port}/" \
                 -e "s/{{PORT}}/${port}/" \
@@ -134,6 +147,11 @@ build(){
                 yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
                 yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker network rm ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
             fi
+
+            for env in "${env_vars[@]}"; do
+                yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            done
+
             print_success "$NAME prepared successfully"
             return 0;;
         *) default_helper;;

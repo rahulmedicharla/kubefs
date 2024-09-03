@@ -109,11 +109,7 @@ run_unique(){
             echo "Connect to $NAME using 'docker exec -it $NAME-container-1 cqlsh'"
         fi
 
-        (cd $CURRENT_DIR/$NAME && $docker_run > /dev/null 2>&1)
-        if [ $? -ne 0 ]; then
-            print_error "Error occured running $NAME. Please try again or use 'kubefs --help' for more information."
-            return 1
-        fi
+        (cd $CURRENT_DIR/$NAME && $docker_run)
 
     else
 

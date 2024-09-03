@@ -183,13 +183,15 @@ create_db(){
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
     fi
+
+    host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
     
     mkdir $CURRENT_DIR/$NAME
     
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i )
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db ""
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$host"
 
     return 0
 }
@@ -215,6 +217,8 @@ create_api() {
         return 1
     fi
 
+    host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
+
     sed -e "s/{{PORT}}/${opts["--port"]}/" \
         -e "s/{{NAME}}/$NAME/" \
         "$KUBEFS_CONFIG/scripts/templates/local-api/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
@@ -224,7 +228,7 @@ create_api() {
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "https://localhost:${opts["--port"]}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$host"
 
     return 0
 }
@@ -257,6 +261,8 @@ create_frontend(){
         return 1
     fi
 
+    host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
+
     sed -e "s/{{NAME}}/$NAME/" \
         "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
     sed -e "s/{{PORT}}/$PORT/" \
@@ -267,7 +273,7 @@ create_frontend(){
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "https://localhost:${opts["--port"]}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$host"
 
     return 0
 }
