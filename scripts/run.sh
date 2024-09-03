@@ -120,11 +120,7 @@ run_unique(){
         echo "Serving $NAME on port $port"
         echo "Use Ctrl C. to stop serving $NAME"
 
-        (cd $CURRENT_DIR/$NAME && $local_run > /dev/null 2>&1)
-        if [ $? -ne 0 ]; then
-            print_error "Error occured running $NAME. Please try again or use 'kubefs --help' for more information."
-            return 1
-        fi
+        (cd $CURRENT_DIR/$NAME && $local_run)
     fi
 
     return 0

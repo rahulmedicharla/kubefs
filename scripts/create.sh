@@ -16,9 +16,15 @@ default_helper() {
 
 validate_port(){
     CASE=$1
-    if grep -q "$CASE" "`pwd`/manifest.yaml"; then
-        return 1
-    fi
+
+    ports=$(yq e '.resources[].port' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a ports <<< "$ports"
+
+    for port in "${ports[@]}"; do
+        if [ "$port" == "$CASE" ]; then
+            return 1
+        fi
+    done
     
     return 0
 }
@@ -172,7 +178,7 @@ create_db(){
 
     eval $(parse_optional_params "9042" "default" $@)
 
-    validate_port "port=${opts["--port"]}"
+    validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
@@ -196,7 +202,7 @@ create_api() {
 
     eval $(parse_optional_params "8080" "main.go" $@)
 
-    validate_port "port=${opts["--port"]}"
+    validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
@@ -218,7 +224,7 @@ create_api() {
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "localhost:${opts["--port"]}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "https://localhost:${opts["--port"]}"
 
     return 0
 }
@@ -231,7 +237,7 @@ create_frontend(){
 
     eval $(parse_optional_params "3000" "index.js" $@)
 
-    validate_port "port=${opts["--port"]}"
+    validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
@@ -261,7 +267,7 @@ create_frontend(){
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "localhost:${opts["--port"]}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "https://localhost:${opts["--port"]}"
 
     return 0
 }
