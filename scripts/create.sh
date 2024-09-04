@@ -185,13 +185,14 @@ create_db(){
     fi
 
     host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
+    cluster_service=http://$NAME-deployment.$NAME.svc.cluster.local:${opts["--port"]}
     
     mkdir $CURRENT_DIR/$NAME
     
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i )
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$host"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$host" "${cluster_service}"
 
     return 0
 }
@@ -218,6 +219,7 @@ create_api() {
     fi
 
     host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
+    cluster_service=http://$NAME-deployment.$NAME.svc.cluster.local:${opts["--port"]}
 
     sed -e "s/{{PORT}}/${opts["--port"]}/" \
         -e "s/{{NAME}}/$NAME/" \
@@ -228,7 +230,7 @@ create_api() {
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$host"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$host" "${cluster_service}"
 
     return 0
 }
@@ -262,6 +264,7 @@ create_frontend(){
     fi
 
     host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
+    cluster_service=https://$NAME-deployment.$NAME.svc.cluster.local:${opts["--port"]}
 
     sed -e "s/{{NAME}}/$NAME/" \
         "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
@@ -273,7 +276,7 @@ create_frontend(){
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$host"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$host" "${cluster_service}"
 
     return 0
 }

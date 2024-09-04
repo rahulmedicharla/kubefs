@@ -27,11 +27,12 @@ append_to_manifest() {
     COMMAND=$4
     TYPE=$5
     ADDRESS_LOCAL=$6
+    ADDRESS_CLUSTER=$7
 
-    sanitized_name=$(echo "$NAME" | tr '-' '_')_local_address
+    sanitized_name=$(echo "$NAME" | tr '-' '_')_address
     print_warning "Use \"$sanitized_name\" to access to access this resource."
 
-    yq e ".resources += [{\"name\": \"$NAME\", \"entry\": \"$ENTRY\", \"port\": \"$PORT\", \"command\": \"$COMMAND\", \"type\": \"$TYPE\", \"env\": \"$sanitized_name=$ADDRESS_LOCAL\" }]" -i  $CURRENT_DIR/manifest.yaml
+    yq e ".resources += [{\"name\": \"$NAME\", \"entry\": \"$ENTRY\", \"port\": \"$PORT\", \"command\": \"$COMMAND\", \"type\": \"$TYPE\", \"env\": \"$sanitized_name=$ADDRESS_LOCAL\", \"env-remote\": \"$sanitized_name=$ADDRESS_CLUSTER\" }]" -i  $CURRENT_DIR/manifest.yaml
 }
 
 remove_from_manifest(){

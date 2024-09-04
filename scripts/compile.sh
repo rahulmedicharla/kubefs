@@ -182,7 +182,6 @@ build(){
 push(){
     NAME=$1
     CURRENT_DIR=`pwd`
-    echo "Pushing $NAME..."
 
     type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
@@ -201,7 +200,7 @@ push(){
     echo "Pushing $NAME component to docker hub..."
 
     docker tag $NAME "$docker_repo"
-    sudo docker push "$docker_repo"
+    docker push "$docker_repo"
 
     if [ $? -eq 1 ]; then
         print_error "$NAME component was not pushed to docker hub. Please try again."
