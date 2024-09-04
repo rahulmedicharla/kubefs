@@ -72,7 +72,7 @@ run_all(){
         local_run=$(yq e '.up.local' $CURRENT_DIR/$name/scaffold.yaml)
 
         if [ "${opts["--platform"]}" == "docker" ] && [ "$docker_run" == "null" ]; then
-            print_warning "Docker image not built for $NAME, please build using 'kubefs docker build'. "
+            print_warning "Docker image not built for $NAME, please build using 'kubefs compile'. "
             continue
         fi
 
@@ -143,7 +143,7 @@ run_helper(){
     local_run=$(yq e '.up.local' $CURRENT_DIR/$name/scaffold.yaml)
 
     if [ "${opts["--platform"]}" == "docker" ] && [ "$docker_run" == "null" ]; then
-        print_warning "Docker image not built for $NAME, please build using 'kubefs docker build'. "
+        print_warning "Docker image not built for $NAME, please build using 'kubefs compile'. "
         return 1
     fi
 

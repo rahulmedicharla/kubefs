@@ -192,12 +192,12 @@ push(){
     docker_repo=$(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml)
 
     if [ "$docker_run" == "null" ]; then
-        print_warning "Docker image not built for $NAME, please build using 'kubefs docker build'. "
+        print_warning "Docker image not built for $NAME, please build using 'kubefs compile'. "
         return 1
     fi
 
     if [ "$type" == "db" ]; then
-        print_warning "You don't need to push a database component to docker hub. Use 'kubefs docker exec' to run the component"
+        print_warning "You don't need to push a database component to docker hub. Use 'kubefs run' to run the component"
         return 0
     fi
 
