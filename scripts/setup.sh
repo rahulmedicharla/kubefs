@@ -35,19 +35,20 @@ download_dependencies(){
         fi
     fi
 
-    # prompt to download colima
-    if !(command -v colima &> /dev/null); then
-        echo "Downloading colima..."
-        brew install colima
+    # prompt to download kind
+    if !(command -v kind &> /dev/null); then
+        echo "Downloading kind..."
+        brew install kind
 
         if [ $? -ne 0 ]; then
-            echo "Failed to install colima. Exiting..."
+            echo "Failed to install kind. Exiting..."
             return 1
         fi
 
-        colima start --kubernetes
+        kind create cluster
         kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
-        colima stop
+        kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+        kind delete cluster
     fi
 
     # prompt to download docker

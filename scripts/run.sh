@@ -44,7 +44,7 @@ run_all(){
     manifest_data=$(yq e '.resources[] | .name + ":" + .type' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-    env_vars=$(yq e '.resources[].env' $CURRENT_DIR/manifest.yaml)
+    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     for env_var in "${env_vars[@]}"; do
@@ -152,7 +152,7 @@ run_helper(){
         return 0
     fi
 
-    env_vars=$(yq e '.resources[].env' $CURRENT_DIR/manifest.yaml)
+    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     for env_var in "${env_vars[@]}"; do

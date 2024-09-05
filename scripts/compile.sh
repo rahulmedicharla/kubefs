@@ -107,7 +107,7 @@ build(){
     entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
     
-    env_vars=$(yq e '.resources[].env' $CURRENT_DIR/manifest.yaml)
+    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     case "$type" in
@@ -165,7 +165,7 @@ build(){
     docker rmi $NAME > /dev/null 2>&1
 
     # build docker image
-    (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME .)
+    (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME:latest .)
 
     if [ $? -eq 1 ]; then
         print_error "$NAME component was not built successfuly. Please try again."
@@ -203,8 +203,8 @@ push(){
 
     echo "Pushing $NAME component to docker hub..."
 
-    docker tag $NAME "$docker_repo"
-    docker push "$docker_repo"
+    docker tag $NAME:latest $docker_repo:latest
+    docker push $docker_repo:latest
 
     if [ $? -eq 1 ]; then
         print_error "$NAME component was not pushed to docker hub. Please try again."

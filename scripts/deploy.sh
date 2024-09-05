@@ -22,8 +22,9 @@ helmify(){
     port=$(yq e '.project.port' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_repo=$(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml)
     type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
+    entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-    env_vars=$(yq e '.resources[].env-remote' $CURRENT_DIR/manifest.yaml)
+    env_vars=$(yq e '.resources[].env-remote[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     if [ "$docker_run" == "null" ]; then
@@ -39,6 +40,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#None#" \
+            -e "s#{{KEYSPACE}}#$entry#" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
@@ -56,6 +58,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
+            -e "s#{{KEYSPACE}}##" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
@@ -72,6 +75,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
+            -e "s#{{KEYSPACE}}##" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
@@ -127,9 +131,9 @@ deploy_all(){
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
 
-    if ! colima status > /dev/null 2>&1; then
-        print_warning "Colima is not running. Starting Colima with 'colima start -k'"
-        colima start
+    if ! kind get clusters > /dev/null 2>&1; then
+        print_warning "kind is not running. Starting kind with 'kind create cluster'"
+        kind create cluster
     fi
 
     for name in "${manifest_data[@]}"; do
@@ -151,9 +155,9 @@ deploy_helper(){
     shift
     eval "$(parse_optional_params $@)"
 
-    if ! colima status > /dev/null 2>&1; then
-        print_warning "Colima is not running. Starting Colima with 'colima start -k'"
-        colima start
+    if ! kind get clusters > /dev/null 2>&1; then
+        print_warning "kind is not running. Starting kind with 'kind create cluster'"
+        kind create cluster
     fi
 
     deploy_unique $NAME "${opts[@]}"

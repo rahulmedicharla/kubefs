@@ -28,11 +28,13 @@ append_to_manifest() {
     TYPE=$5
     ADDRESS_LOCAL=$6
     ADDRESS_CLUSTER=$7
+    UPPERCASE_NAME=$8
 
-    sanitized_name=$(echo "$NAME" | tr '-' '_')_address
-    print_warning "Use \"$sanitized_name\" to access to access this resource."
+    sanitized_host=${UPPERCASE_NAME}_HOST
+    sanitized_port=${UPPERCASE_NAME}_PORT
+    print_warning "Use \"$sanitized_host\": \"$sanitized_port\" to access to access this resource."
 
-    yq e ".resources += [{\"name\": \"$NAME\", \"entry\": \"$ENTRY\", \"port\": \"$PORT\", \"command\": \"$COMMAND\", \"type\": \"$TYPE\", \"env\": \"$sanitized_name=$ADDRESS_LOCAL\", \"env-remote\": \"$sanitized_name=$ADDRESS_CLUSTER\" }]" -i  $CURRENT_DIR/manifest.yaml
+    yq e ".resources += [{\"name\": \"$NAME\", \"entry\": \"$ENTRY\", \"port\": \"$PORT\", \"command\": \"$COMMAND\", \"type\": \"$TYPE\", \"env\": [\"$sanitized_host=$ADDRESS_LOCAL\", \"$sanitized_port=$PORT\"], \"env-remote\": [\"$sanitized_host=$ADDRESS_CLUSTER\", \"$sanitized_port=$PORT\"]}]" -i  $CURRENT_DIR/manifest.yaml
 }
 
 remove_from_manifest(){

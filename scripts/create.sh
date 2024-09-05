@@ -184,15 +184,17 @@ create_db(){
         return 1
     fi
 
-    host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
-    cluster_service=http://$NAME-deployment.$NAME.svc.cluster.local:${opts["--port"]}
+    local_host=$(hostname -I | awk '{print $1}')
+    cluster_host=$NAME-deployment.$NAME.svc.cluster.local
+
+    sanitized_name=CQLSH
     
     mkdir $CURRENT_DIR/$NAME
     
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i )
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$host" "${cluster_service}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
 
     return 0
 }
@@ -218,8 +220,10 @@ create_api() {
         return 1
     fi
 
-    host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
-    cluster_service=http://$NAME-deployment.$NAME.svc.cluster.local:${opts["--port"]}
+    local_host=$(hostname -I | awk '{print $1}')
+    cluster_host=$NAME-deployment.$NAME.svc.cluster.local
+
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
     sed -e "s/{{PORT}}/${opts["--port"]}/" \
         -e "s/{{NAME}}/$NAME/" \
@@ -230,7 +234,7 @@ create_api() {
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$host" "${cluster_service}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$local_host" "${cluster_host}" $sanitized_name
 
     return 0
 }
@@ -263,8 +267,10 @@ create_frontend(){
         return 1
     fi
 
-    host=http://$(hostname -I | awk '{print $1}'):${opts["--port"]}
-    cluster_service=https://$NAME-deployment.$NAME.svc.cluster.local:${opts["--port"]}
+    local_host=$(hostname -I | awk '{print $1}')
+    cluster_host=$NAME-deployment.$NAME.svc.cluster.local
+
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
     sed -e "s/{{NAME}}/$NAME/" \
         "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
@@ -276,7 +282,7 @@ create_frontend(){
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$host" "${cluster_service}"
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name
 
     return 0
 }
