@@ -149,7 +149,7 @@ build(){
             if [ "$docker_run" == "null" ]; then
                 yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
                 yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
-                yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker rm network ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rm $NAME-setup-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker network rm ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
             fi
 
             for env in "${env_vars[@]}"; do
