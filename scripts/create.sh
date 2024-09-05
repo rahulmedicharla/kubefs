@@ -187,7 +187,7 @@ create_db(){
     local_host=$(hostname -I | awk '{print $1}')
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
 
-    sanitized_name=CQLSH
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
     
     mkdir $CURRENT_DIR/$NAME
     

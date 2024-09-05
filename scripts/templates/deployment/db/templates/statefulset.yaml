@@ -75,7 +75,7 @@ spec:
                 - -c
                 - |
                   if [[ $(nodetool status | grep $POD_IP) == *"UN"* ]]; then
-                    cqlsh -e $CQLSH_HOST $CQLSH_PORT "CREATE KEYSPACE IF NOT EXISTS {{ .Values.keyspace }} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2}"
+                    cqlsh -e "CREATE KEYSPACE IF NOT EXISTS {{ .Values.keyspace }} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2}"
                     echo "Keyspace {{ .Values.keyspace }} created."
                     exit 0
                   else:
