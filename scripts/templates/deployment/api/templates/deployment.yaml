@@ -36,8 +36,8 @@ spec:
         - name: {{ .Chart.Name }}
           env:
             {{- range .Values.env }}
-            - name: {{ .name }}
-              value: {{ .value }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
             {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}

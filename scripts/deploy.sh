@@ -131,7 +131,7 @@ deploy_all(){
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
 
-    if ! kind get clusters > /dev/null 2>&1; then
+    if ! kubectl get all > /dev/null 2>&1; then
         print_warning "kind is not running. Starting kind with 'kind create cluster'"
         kind create cluster
     fi
@@ -155,7 +155,7 @@ deploy_helper(){
     shift
     eval "$(parse_optional_params $@)"
 
-    if ! kind get clusters > /dev/null 2>&1; then
+    if ! kubectl get all > /dev/null 2>&1; then
         print_warning "kind is not running. Starting kind with 'kind create cluster'"
         kind create cluster
     fi

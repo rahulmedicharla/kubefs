@@ -54,12 +54,37 @@ spec:
             cpu: "500m"
             memory: 1Gi
         env:
+          {{- range .Values.env }}
+          - name: {{ .name | quote }}
+            value: {{ .value | quote }}
+          {{- end }}
           - name: CASSANDRA_CLUSTER_NAME
             value: {{ .Chart.Name }}
           - name: MAX_HEAP_SIZE
             value: 512M
           - name: HEAP_NEWSIZE
             value: 100M
+          - name: POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+        readinessProbe:
+          exec:
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  if [[ $(nodetool status | grep $POD_IP) == *"UN"* ]]; then
+                    cqlsh -e $CQLSH_HOST $CQLSH_PORT "CREATE KEYSPACE IF NOT EXISTS {{ .Values.keyspace }} WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 2}"
+                    echo "Keyspace {{ .Values.keyspace }} created."
+                    exit 0
+                  else:
+                    echo "Node is not ready yet."
+                    exit 1
+                  fi
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 240
         volumeMounts:
         - name: cassandra-data
           mountPath: /cassandra_data
