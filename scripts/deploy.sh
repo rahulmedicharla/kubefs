@@ -10,6 +10,8 @@ default_helper() {
 
         Args:
             --target <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
+            --no-deploy: Don't deploy the helm chart, only create the helm chart
+            --no-helmify: Don't create the helm chart
     "
 }
 
@@ -20,6 +22,10 @@ helmify(){
     port=$(yq e '.project.port' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_repo=$(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml)
     type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
+    entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
+
+    env_vars=$(yq e '.resources[].env-remote[]' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     if [ "$docker_run" == "null" ]; then
         print_warning "Docker Image is not built for $NAME component. Please build and push the image"
@@ -34,7 +40,14 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#None#" \
+            -e "s#{{KEYSPACE}}#$entry#" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        
+        for env in "${env_vars[@]}"; do
+            IFS='=' read -r -a env_parts <<< "$env"
+            yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        done
+        
     }
 
     helmify_frontend(){
@@ -45,7 +58,13 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
+            -e "s#{{KEYSPACE}}##" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+       
+        for env in "${env_vars[@]}"; do
+            IFS='=' read -r -a env_parts <<< "$env"
+            yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        done
     }
 
     helmify_api(){
@@ -56,7 +75,13 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
+            -e "s#{{KEYSPACE}}##" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        
+        for env in "${env_vars[@]}"; do
+            IFS='=' read -r -a env_parts <<< "$env"
+            yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        done
     }
     
     case "$type" in
@@ -72,6 +97,8 @@ parse_optional_params(){
     declare -A opts
 
     opts["--target"]=local
+    opts["--no-deploy"]=false
+    opts["--no-helmify"]=false
 
     while [ $# -gt 0 ]; do
         case $1 in
@@ -80,6 +107,12 @@ parse_optional_params(){
                     opts["--target"]=$2
                     shift
                 fi 
+                ;;
+            --no-deploy)
+                opts["--no-deploy"]=true
+                ;;
+            --no-helmify)
+                opts["--no-helmify"]=true
                 ;;
         esac
         shift
@@ -98,9 +131,9 @@ deploy_all(){
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
 
-    if ! colima status > /dev/null 2>&1; then
-        print_warning "Colima is not running. Starting Colima with 'colima start -k'"
-        colima start
+    if ! kubectl get all > /dev/null 2>&1; then
+        print_warning "kind is not running. Starting kind with 'kind create cluster'"
+        kind create cluster
     fi
 
     for name in "${manifest_data[@]}"; do
@@ -122,9 +155,9 @@ deploy_helper(){
     shift
     eval "$(parse_optional_params $@)"
 
-    if ! colima status > /dev/null 2>&1; then
-        print_warning "Colima is not running. Starting Colima with 'colima start -k'"
-        colima start
+    if ! kubectl get all > /dev/null 2>&1; then
+        print_warning "kind is not running. Starting kind with 'kind create cluster'"
+        kind create cluster
     fi
 
     deploy_unique $NAME "${opts[@]}"
@@ -155,25 +188,31 @@ deploy_unique(){
 
     echo "Deploying $NAME ..."
 
-    eval "$(parse_optional_params $@)"
-    
     case ${opts["--target"]} in
         # "EKS") deploy_eks $NAME;;
         # "Azure") deploy_azure $NAME;;
         # "GCP") deploy_gcp $NAME;;
         *)
-            rm -rf $CURRENT_DIR/$NAME/deploy
-            helmify $NAME
 
-            if [ $? -eq 1 ]; then
-                return 1
+            if [ "${opts["--no-helmify"]}" == false ]; then
+                rm -rf $CURRENT_DIR/$NAME/deploy
+                
+                helmify $NAME
+
+                if [ $? -eq 1 ]; then
+                    print_error "Error occured helmifying $NAME. Please try again or use 'kubefs --help' for more information."
+                    return 1
+                fi
             fi
 
-            helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy 
+            if [ "${opts["--no-deploy"]}" == false ]; then
 
-            if [ $? -eq 1 ]; then
-                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
-                return 1
+                helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
+
+                if [ $? -eq 1 ]; then
+                    print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                    return 1
+                fi
             fi
             ;;
     esac

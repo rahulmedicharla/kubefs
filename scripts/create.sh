@@ -10,15 +10,21 @@ default_helper() {
 
     Args:
         --port <port> - specify the port number for resource
-        --entry <entry> - specify the entry file | host IP for the resource
+        --entry <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
     "
 }
 
 validate_port(){
     CASE=$1
-    if grep -q "$CASE" "`pwd`/manifest.yaml"; then
-        return 1
-    fi
+
+    ports=$(yq e '.resources[].port' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a ports <<< "$ports"
+
+    for port in "${ports[@]}"; do
+        if [ "$port" == "$CASE" ]; then
+            return 1
+        fi
+    done
     
     return 0
 }
@@ -170,20 +176,25 @@ create_db(){
 
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "9042" "none" $@)
+    eval $(parse_optional_params "9042" "default" $@)
 
-    validate_port "port=${opts["--port"]}"
+    validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
     fi
+
+    local_host=$(hostname -I | awk '{print $1}')
+    cluster_host=$NAME-deployment.$NAME.svc.cluster.local
+
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
     
     mkdir $CURRENT_DIR/$NAME
     
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i )
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "" "${opts["--port"]}" "" db
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
 
     return 0
 }
@@ -196,7 +207,7 @@ create_api() {
 
     eval $(parse_optional_params "8080" "main.go" $@)
 
-    validate_port "port=${opts["--port"]}"
+    validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
@@ -209,6 +220,11 @@ create_api() {
         return 1
     fi
 
+    local_host=$(hostname -I | awk '{print $1}')
+    cluster_host=$NAME-deployment.$NAME.svc.cluster.local
+
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+
     sed -e "s/{{PORT}}/${opts["--port"]}/" \
         -e "s/{{NAME}}/$NAME/" \
         "$KUBEFS_CONFIG/scripts/templates/local-api/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
@@ -218,7 +234,7 @@ create_api() {
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$local_host" "${cluster_host}" $sanitized_name
 
     return 0
 }
@@ -231,7 +247,7 @@ create_frontend(){
 
     eval $(parse_optional_params "3000" "index.js" $@)
 
-    validate_port "port=${opts["--port"]}"
+    validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
@@ -251,17 +267,22 @@ create_frontend(){
         return 1
     fi
 
+    local_host=$(hostname -I | awk '{print $1}')
+    cluster_host=$NAME-deployment.$NAME.svc.cluster.local
+
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+
     sed -e "s/{{NAME}}/$NAME/" \
         "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
     sed -e "s/{{PORT}}/$PORT/" \
         "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-env.conf" > "$CURRENT_DIR/$NAME/.env"
 
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"frontend\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"frontend\"" $SCAFFOLD -i )
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend
+    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name
 
     return 0
 }

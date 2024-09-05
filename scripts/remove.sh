@@ -166,7 +166,6 @@ remove_unique(){
         IFS=$'\n' read -r -d '' -a remove_local < <(yq e '.remove.local[]' "$CURRENT_DIR/$NAME/scaffold.yaml" && printf '\0')
         for cmd in "${remove_local[@]}"; do
             eval "$cmd"
-            
         done
 
     fi

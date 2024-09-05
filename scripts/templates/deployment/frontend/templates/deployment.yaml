@@ -34,6 +34,11 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: {{ .Chart.Name }}
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

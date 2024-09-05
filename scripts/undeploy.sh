@@ -10,7 +10,7 @@ default_helper() {
 
         Args:
             --target <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
-            --close-colima - close colima after undeploying components
+            --close-kind - close kind after undeploying components
     "
 }
 
@@ -18,7 +18,7 @@ parse_optional_params(){
     declare -A opts
 
     opts["--target"]=local
-    opts["--close-colima"]=false
+    opts["--close-kind"]=false
 
     while [ $# -gt 0 ]; do
         case $1 in
@@ -28,8 +28,8 @@ parse_optional_params(){
                     shift
                 fi 
                 ;;
-            --close-colima)
-                opts["--close-colima"]=true
+            --close-kind)
+                opts["--close-kind"]=true
                 ;;
         esac
         shift
@@ -57,8 +57,8 @@ undeploy_all(){
         fi
     done
 
-    if [ "${opts["--close-colima"]}" == true ]; then
-        colima stop
+    if [ "${opts["--close-kind"]}" == true ]; then
+        kind delete cluster
     fi
 
     print_success "Undeployed all components"
@@ -77,8 +77,8 @@ undeploy_helper(){
         return 0
     fi
 
-    if [ "${opts["--close-colima"]}" == true ]; then
-        colima stop
+    if [ "${opts["--close-kind"]}" == true ]; then
+        kind delete cluster
     fi
 
     return 0
