@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "db-deploy.fullname" . }}
+  name: {{ include "deployment.fullname" . }}
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "db-deploy.labels" . | nindent 4 }}
+    {{- include "deployment.labels" . | nindent 4 }}
 spec:
-  serviceName: {{ include "db-deploy.fullname" . }}
+  serviceName: {{ include "deployment.fullname" . }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "db-deploy.selectorLabels" . | nindent 6 }}
+      {{- include "deployment.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,7 +18,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "db-deploy.labels" . | nindent 8 }}
+        {{- include "deployment.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -27,7 +27,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "db-deploy.serviceAccountName" . }}
+      serviceAccountName: {{ include "deployment.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: 60
@@ -57,6 +57,13 @@ spec:
           {{- range .Values.env }}
           - name: {{ .name | quote }}
             value: {{ .value | quote }}
+          {{- end }}
+          {{- range .Values.secrets }}
+          - name: {{ .name| quote }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretRef | quote }}
+                key: {{ .name | quote }}
           {{- end }}
           - name: CASSANDRA_CLUSTER_NAME
             value: {{ .Chart.Name }}
