@@ -39,6 +39,13 @@ spec:
             - name: {{ .name | quote }}
               value: {{ .value | quote }}
             {{- end }}
+            {{- range .Values.secrets }}
+            - name: {{ .name| quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretRef | quote }}
+                  key: {{ .name | quote }}
+            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

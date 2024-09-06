@@ -27,6 +27,11 @@ helmify(){
     env_vars=$(yq e '.resources[].env-remote[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
+    secrets=()
+    if [ -f $CURRENT_DIR/$NAME/".env" ]; then
+        secrets+=($(cat $CURRENT_DIR/$NAME/".env"))
+    fi
+
     if [ "$docker_run" == "null" ]; then
         print_warning "Docker Image is not built for $NAME component. Please build and push the image"
         return 1
@@ -40,7 +45,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#None#" \
-            -e "s#{{ENTRy}}#$entry#" \
+            -e "s#{{ENTRY}}#$entry#" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
@@ -90,7 +95,16 @@ helmify(){
         "db") helmify_database $NAME;;
     esac
 
-    echo "Helm Chart created for $NAME..."
+    if [ ${#secrets[@]} -gt 0 ]; then
+        cp $KUBEFS_CONFIG/scripts/templates/deployment/shared/template-secret.conf $CURRENT_DIR/$NAME/deploy/templates/secret.yaml
+
+        for secret in "${secrets[@]}"; do
+            IFS='=' read -r -a secret_parts <<< "$secret"
+            yq e ".secrets += [{\"name\" : \"${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        done
+    fi
+
+    print_success "Helm Chart created for $NAME..."
 }
 
 parse_optional_params(){

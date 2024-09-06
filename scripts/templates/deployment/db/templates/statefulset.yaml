@@ -58,6 +58,13 @@ spec:
           - name: {{ .name | quote }}
             value: {{ .value | quote }}
           {{- end }}
+          {{- range .Values.secrets }}
+          - name: {{ .name| quote }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretRef | quote }}
+                key: {{ .name | quote }}
+          {{- end }}
           - name: CASSANDRA_CLUSTER_NAME
             value: {{ .Chart.Name }}
           - name: MAX_HEAP_SIZE

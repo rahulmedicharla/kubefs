@@ -149,7 +149,6 @@ create_helper_func() {
                 return 1
             fi
             
-            print_success "$TYPE $NAME was created successfully!"
             ;;
         "frontend")
             create_docker_repo $NAME
@@ -160,12 +159,18 @@ create_helper_func() {
                 return 1
             fi
             
-            print_success "$TYPE $NAME was created successfully!"
             ;;
         "db") 
-            print_success "$TYPE $NAME was created successfully!"
             ;;
     esac
+
+    echo ""
+    print_success "$NAME created successfully!"
+    echo ""
+    echo "To start the project use 'kubefs run $NAME'"
+    echo ""
+    print_warning "To utilize environment variables, create a .env file in the project directory"
+    echo ""
 
     return 0
 }
@@ -192,6 +197,7 @@ create_db(){
     mkdir $CURRENT_DIR/$NAME
     
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+    (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i )
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
@@ -231,6 +237,7 @@ create_api() {
 
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"api\"" $SCAFFOLD -i)
+    (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
@@ -280,6 +287,7 @@ create_frontend(){
 
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"frontend\"" $SCAFFOLD -i )
+    (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
     (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)

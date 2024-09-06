@@ -110,6 +110,10 @@ build(){
     env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
+    if [ -f $CURRENT_DIR/$NAME/".env" ]; then
+        env_vars+=($(cat $CURRENT_DIR/$NAME/".env"))
+    fi
+
     case "$type" in
         "api")
             sed -e "s/{{PORT}}/${port}/" \
