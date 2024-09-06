@@ -40,7 +40,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#None#" \
-            -e "s#{{KEYSPACE}}#$entry#" \
+            -e "s#{{ENTRy}}#$entry#" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
@@ -58,7 +58,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
-            -e "s#{{KEYSPACE}}##" \
+            -e "s#{{ENTRY}}#$entry#" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
@@ -75,7 +75,7 @@ helmify(){
             -e "s#{{PORT}}#$port#" \
             -e "s#{{TAG}}#latest#" \
             -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
-            -e "s#{{KEYSPACE}}##" \
+            -e "s#{{ENTRY}}#$entry#" \
             "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
