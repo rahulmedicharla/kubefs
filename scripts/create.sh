@@ -255,13 +255,13 @@ create_frontend(){
 
     mkdir $CURRENT_DIR/$NAME
     (cd $CURRENT_DIR/$NAME && npm init -y)
-    (cd $CURRENT_DIR/$NAME && jq ".main = \"${opts["--entry"]}\"" package.json > tmp.json && mv tmp.json package.json)
-
+    (cd $CURRENT_DIR/$NAME && jq '.main = "'${opts["--entry"]}'" | .type = "module"' package.json > tmp.json && mv tmp.json package.json)
+    
     if [ $? -ne 0 ]; then
         return 1
     fi
 
-    (cd `pwd`/$NAME && npm install express && npm install dotenv && npm install nodemon)
+    (cd `pwd`/$NAME && npm install express nodemon express-handlebars )
 
     if [ $? -ne 0 ]; then
         return 1
@@ -273,9 +273,10 @@ create_frontend(){
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
     sed -e "s/{{NAME}}/$NAME/" \
+        -e "s/{{PORT}}/${opts["--port"]}/" \
         "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
-    sed -e "s/{{PORT}}/$PORT/" \
-        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-env.conf" > "$CURRENT_DIR/$NAME/.env"
+
+    cp -r $KUBEFS_CONFIG/scripts/templates/local-frontend/views $CURRENT_DIR/$NAME/views
 
     (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
     (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"frontend\"" $SCAFFOLD -i )
