@@ -9,8 +9,8 @@ default_helper() {
         kubefs remove --help - display this help message
 
         Args:
-            --no-local: Don't delete from local
-            --no-remote: Don't delete from docker hub
+            --no-local | -nl: Don't delete from local
+            --no-remote | -nr: Don't delete from docker hub
     "
 }
 
@@ -22,10 +22,10 @@ parse_optional_params(){
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --no-local)
+            --no-local | -nl)
                 opts["--no-local"]=true
                 ;;
-            --no-remote)
+            --no-remote | -nr)
                 opts["--no-remote"]=true
                 ;;
         esac
