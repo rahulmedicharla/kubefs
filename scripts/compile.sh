@@ -9,8 +9,8 @@ default_helper() {
         kubefs compile --help - display this help message
 
         Args:
-            --no-build: Don't build docker images
-            --no-push: Don't push docker images to docker hub
+            --no-build | -nb: Don't build docker images
+            --no-push | -np: Don't push docker images to docker hub
     "
 }
 
@@ -22,10 +22,10 @@ parse_optional_params(){
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --no-build)
+            --no-build | -nb)
                 opts["--no-build"]=true
                 ;;
-            --no-push)
+            --no-push | -np)
                 opts["--no-push"]=true
                 ;;
         esac

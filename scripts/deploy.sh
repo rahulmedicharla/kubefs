@@ -9,11 +9,40 @@ default_helper() {
         kubefs deploy --help - display this help message
 
         Args:
-            --target <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
-            --no-deploy: Don't deploy the helm chart, only create the helm chart
-            --no-helmify: Don't create the helm chart
+            --target | -t <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
+            --no-deploy | -nd: Don't deploy the helm chart, only create the helm chart
+            --no-helmify | -nh: Don't create the helm chart
     "
 }
+
+parse_optional_params(){
+    declare -A opts
+
+    opts["--target"]=local
+    opts["--no-deploy"]=false
+    opts["--no-helmify"]=false
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --target| -t)
+                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "Azure" ] || [ "$2" == "GCP" ]; then
+                    opts["--target"]=$2
+                    shift
+                fi 
+                ;;
+            --no-deploy | -nd)
+                opts["--no-deploy"]=true
+                ;;
+            --no-helmify | -nh)
+                opts["--no-helmify"]=true
+                ;;
+        esac
+        shift
+    done
+
+    echo $(declare -p opts)
+}
+
 
 helmify(){
     NAME=$1
@@ -105,34 +134,6 @@ helmify(){
     fi
 
     print_success "Helm Chart created for $NAME..."
-}
-
-parse_optional_params(){
-    declare -A opts
-
-    opts["--target"]=local
-    opts["--no-deploy"]=false
-    opts["--no-helmify"]=false
-
-    while [ $# -gt 0 ]; do
-        case $1 in
-            --target)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "Azure" ] || [ "$2" == "GCP" ]; then
-                    opts["--target"]=$2
-                    shift
-                fi 
-                ;;
-            --no-deploy)
-                opts["--no-deploy"]=true
-                ;;
-            --no-helmify)
-                opts["--no-helmify"]=true
-                ;;
-        esac
-        shift
-    done
-
-    echo $(declare -p opts)
 }
 
 deploy_all(){

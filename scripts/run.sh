@@ -9,7 +9,7 @@ default_helper() {
         kubefs run --help - display this help message
 
         Args:
-            --platform <local|docker> : Specify the platform to run the resource 
+            --platform | -p <local|docker> : Specify the platform to run the resource 
     "
 }
 
@@ -20,7 +20,7 @@ parse_optional_params(){
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --platform)
+            --platform | -p)
                 if [ "$2" == "local" ] || [ "$2" == "docker" ]; then
                     opts["--platform"]=$2
                     shift

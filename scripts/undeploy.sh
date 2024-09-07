@@ -9,8 +9,8 @@ default_helper() {
         kubefs undeploy --help - display this help message
 
         Args:
-            --target <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
-            --close-kind - close kind after undeploying components
+            --target | -t <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
+            --close-kind | -ck - close kind after undeploying components
     "
 }
 
@@ -22,13 +22,13 @@ parse_optional_params(){
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --target)
+            --target | -t)
                 if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "Azure" ] || [ "$2" == "GCP" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
                 ;;
-            --close-kind)
+            --close-kind | -ck)
                 opts["--close-kind"]=true
                 ;;
         esac

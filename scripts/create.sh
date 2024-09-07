@@ -9,8 +9,8 @@ default_helper() {
     kubefs create database <name> - creates a sample database called <name> using atlas
 
     Args:
-        --port <port> - specify the port number for resource
-        --entry <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
+        --port | -p <port> - specify the port number for resource
+        --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
     "
 }
 
@@ -41,11 +41,11 @@ parse_optional_params(){
 
     while [ $# -gt 0 ]; do
         case $1 in
-            --port)
+            --port | -p)
                 opts["--port"]=$2
                 shift
                 ;;
-            --entry)
+            --entry | -e)
                 opts["--entry"]=$2
                 shift
                 ;;
