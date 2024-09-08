@@ -10,7 +10,7 @@ default_helper() {
 
         Args:
             --target | -t <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
-            --close-minikube | -ck - close minikube after undeploying components
+            --close-minikube | -cm - close minikube after undeploying components
     "
 }
 
@@ -28,7 +28,7 @@ parse_optional_params(){
                     shift
                 fi 
                 ;;
-            --close-minikube | -ck)
+            --close-minikube | -cm)
                 opts["--close-minikube"]=true
                 ;;
         esac
@@ -78,7 +78,7 @@ undeploy_helper(){
     fi
 
     if [ "${opts["--close-minikube"]}" == true ]; then
-        minikube delete cluster
+        minikube stop
     fi
 
     return 0

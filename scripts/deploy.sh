@@ -148,7 +148,7 @@ deploy_all(){
 
     if ! minikube status 2>&1; then
         print_warning "minikube is not running. Starting minikube with 'minikube start'"
-        minikube start
+        minikube start --cpus 4 --memory 8192
     fi
 
     for name in "${manifest_data[@]}"; do
@@ -223,6 +223,8 @@ deploy_unique(){
             if [ "${opts["--no-deploy"]}" == false ]; then
 
                 helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
+
+                print_warning "Deployed $NAME... Use 'minikube tunnel' to port-forward the service to localhost"
 
                 if [ $? -eq 1 ]; then
                     print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."

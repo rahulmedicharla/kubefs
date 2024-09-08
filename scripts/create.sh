@@ -268,7 +268,7 @@ create_frontend(){
         return 1
     fi
 
-    (cd `pwd`/$NAME && npm install express nodemon express-handlebars )
+    (cd `pwd`/$NAME && npm install express nodemon express-handlebars dotenv )
 
     if [ $? -ne 0 ]; then
         return 1

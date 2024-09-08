@@ -124,6 +124,8 @@ build(){
                 -e "s/{{NAME}}/$NAME/" \
                 "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
 
+            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+
             for env in "${env_vars[@]}"; do
                 yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done
@@ -136,6 +138,8 @@ build(){
                 -e "s/{{PORT}}/${port}/" \
                 -e "s/{{NAME}}/$NAME/" \
                 "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+
+            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
             
             for env in "${env_vars[@]}"; do
                 yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
@@ -149,6 +153,9 @@ build(){
                 -e "s/{{PORT}}/${port}/" \
                 -e "s/{{ENTRY}}/${entry}/" \
                 "$KUBEFS_CONFIG/scripts/templates/local-db/template-db-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+
+            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+            
             
             if [ "$docker_run" == "null" ]; then
                 yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
@@ -167,6 +174,7 @@ build(){
 
     # remove old docker image
     docker rmi $NAME > /dev/null 2>&1
+    docker rmi $(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml) > /dev/null 2>&1
 
     # build docker image
     (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME:latest .)
