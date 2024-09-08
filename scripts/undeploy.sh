@@ -10,7 +10,7 @@ default_helper() {
 
         Args:
             --target | -t <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
-            --close-kind | -ck - close kind after undeploying components
+            --close-minikube | -ck - close minikube after undeploying components
     "
 }
 
@@ -18,7 +18,7 @@ parse_optional_params(){
     declare -A opts
 
     opts["--target"]=local
-    opts["--close-kind"]=false
+    opts["--close-minikube"]=false
 
     while [ $# -gt 0 ]; do
         case $1 in
@@ -28,8 +28,8 @@ parse_optional_params(){
                     shift
                 fi 
                 ;;
-            --close-kind | -ck)
-                opts["--close-kind"]=true
+            --close-minikube | -ck)
+                opts["--close-minikube"]=true
                 ;;
         esac
         shift
@@ -57,8 +57,8 @@ undeploy_all(){
         fi
     done
 
-    if [ "${opts["--close-kind"]}" == true ]; then
-        kind delete cluster
+    if [ "${opts["--close-minikube"]}" == true ]; then
+        minikube stop
     fi
 
     print_success "Undeployed all components"
@@ -77,8 +77,8 @@ undeploy_helper(){
         return 0
     fi
 
-    if [ "${opts["--close-kind"]}" == true ]; then
-        kind delete cluster
+    if [ "${opts["--close-minikube"]}" == true ]; then
+        minikube delete cluster
     fi
 
     return 0

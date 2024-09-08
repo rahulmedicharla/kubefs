@@ -146,9 +146,9 @@ deploy_all(){
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
 
-    if ! kubectl get all > /dev/null 2>&1; then
-        print_warning "kind is not running. Starting kind with 'kind create cluster'"
-        kind create cluster
+    if ! minikube status 2>&1; then
+        print_warning "minikube is not running. Starting minikube with 'minikube start'"
+        minikube start
     fi
 
     for name in "${manifest_data[@]}"; do
