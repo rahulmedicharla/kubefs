@@ -146,9 +146,9 @@ deploy_all(){
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
 
-    if ! minikube status 2>&1; then
+    if ! minikube status /dev/null 2>&1; then
         print_warning "minikube is not running. Starting minikube with 'minikube start'"
-        minikube start --cpus 4 --memory 8192
+        minikube start
     fi
 
     for name in "${manifest_data[@]}"; do
@@ -170,9 +170,9 @@ deploy_helper(){
     shift
     eval "$(parse_optional_params $@)"
 
-    if ! kubectl get all > /dev/null 2>&1; then
-        print_warning "kind is not running. Starting kind with 'kind create cluster'"
-        kind create cluster
+    if ! minikube status > /dev/null 2>&1; then
+        print_warning "minikube is not running. Starting minikube with 'minikube start'"
+        minikube start
     fi
 
     deploy_unique $NAME "${opts[@]}"

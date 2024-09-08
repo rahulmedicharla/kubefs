@@ -106,6 +106,7 @@ build(){
     port=$(yq e '.project.port' $CURRENT_DIR/$NAME/scaffold.yaml)
     entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
+    framework=$(yq e '.project.framework' $CURRENT_DIR/$NAME/scaffold.yaml)
     
     env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
@@ -131,16 +132,33 @@ build(){
             done
             ;;  
         "frontend")
-            sed -e "s/{{PORT}}/${port}/" \
-                -e "s/{{ENTRY}}/${entry}/" \
-                "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-            sed -e "s/{{HOST_PORT}}/${port}/" \
-                -e "s/{{PORT}}/${port}/" \
-                -e "s/{{NAME}}/$NAME/" \
-                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+            
+            case "$framework" in
+                "next.js")
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{MEDIUM}}/RUN npm run build/" \
+                        -e "s/{{CMD}}/\"npm\", \"start\"/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    sed -e "s/{{HOST_PORT}}/${port}/" \
+                        -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    ;;
+                *)
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{MEDIUM}}//" \
+                        -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    sed -e "s/{{HOST_PORT}}/${port}/" \
+                        -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+
+                    ;;
+            esac
 
             (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
-            
+  
             for env in "${env_vars[@]}"; do
                 yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done    
