@@ -35,20 +35,19 @@ download_dependencies(){
         fi
     fi
 
-    # prompt to download kind
-    if !(command -v kind &> /dev/null); then
-        echo "Downloading kind..."
-        brew install kind
+    # prompt to download minikube
+    if !(command -v minikube &> /dev/null); then
+        echo "Downloading minikube..."
+        brew install minikube
 
         if [ $? -ne 0 ]; then
-            echo "Failed to install kind. Exiting..."
+            echo "Failed to install minikube. Exiting..."
             return 1
         fi
 
-        kind create cluster
+        minikube start
         kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
-        kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-        kind delete cluster
+        minikube stop
     fi
 
     # prompt to download docker
