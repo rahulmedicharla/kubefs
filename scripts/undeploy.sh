@@ -58,6 +58,9 @@ undeploy_all(){
     done
 
     if [ "${opts["--close-minikube"]}" == true ]; then
+        while kubectl get namespaces | grep -q terminating; do
+            sleep 5
+        done
         minikube stop
     fi
 
@@ -78,6 +81,9 @@ undeploy_helper(){
     fi
 
     if [ "${opts["--close-minikube"]}" == true ]; then
+        while kubectl get namespaces | grep -q terminating; do
+            sleep 5
+        done
         minikube stop
     fi
 

@@ -4,13 +4,15 @@ default_helper() {
     kubefs compile - easily create backend, frontend, & db resources to be used within your application
 
     Usage: kubefs create <COMMAND> [ARGS]
-    kubefs create api <name> - creates a sample GET api called <name> using golang
-    kubefs create frontend <name> - creates a sample frontend application called <name> using react
+    kubefs create api <name> - creates a sample GET api called <name> using golang    
+    kubefs create frontend <name> - creates a sample frontend application called <name>
     kubefs create database <name> - creates a sample database called <name> using atlas
 
     Args:
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
+        --framework | -f <framework> - 
+            : specify the frontend framework to use [express | next] | default: express.js 
     "
 }
 
@@ -34,10 +36,12 @@ parse_optional_params(){
     
     default_port=$1
     default_entry=$2
+    default_framework=$3
     shift 2
 
     opts["--port"]="$default_port"
     opts["--entry"]="$default_entry"
+    opts["--framework"]="$default_framework"
 
     while [ $# -gt 0 ]; do
         case $1 in
@@ -47,6 +51,10 @@ parse_optional_params(){
                 ;;
             --entry | -e)
                 opts["--entry"]=$2
+                shift
+                ;;
+            --framework | -f)
+                opts["--framework"]=$2
                 shift
                 ;;
         esac
@@ -128,7 +136,6 @@ create_helper_func() {
     fi
 
     NAME="$(yq e '.kubefs-name' "`pwd`/manifest.yaml")-$NAME"
-    
 
     # call specified function
     echo "Creating $NAME..."
@@ -252,47 +259,65 @@ create_frontend(){
 
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "3000" "index.js" $@)
+    eval $(parse_optional_params "3000" "index.js" "express.js" $@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
     fi
-
-    mkdir $CURRENT_DIR/$NAME
-    (cd $CURRENT_DIR/$NAME && npm init -y)
-    (cd $CURRENT_DIR/$NAME && jq '.main = "'${opts["--entry"]}'" | .type = "module"' package.json > tmp.json && mv tmp.json package.json)
     
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
-    (cd `pwd`/$NAME && npm install express nodemon express-handlebars dotenv )
-
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
     local_host=$(hostname -I | awk '{print $1}')
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
-
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
-    sed -e "s/{{NAME}}/$NAME/" \
-        -e "s/{{PORT}}/${opts["--port"]}/" \
-        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
+    if [ ${opts["--framework"]} == "next" ]; then
+        mkdir $CURRENT_DIR/$NAME
+        (cd $CURRENT_DIR/$NAME && npx create-next-app --ts . )
 
-    cp -r $KUBEFS_CONFIG/scripts/templates/local-frontend/views $CURRENT_DIR/$NAME/views
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
 
-    (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"frontend\"" $SCAFFOLD -i )
-    (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.build = "export PORT='${opts["--port"]}' && next build" | .scripts.start = "export PORT='${opts["--port"]}' && next start" | .scripts.lint = "export PORT='${opts["--port"]}' && next lint"' package.json > tmp.json && mv tmp.json package.json)
 
+        (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
+        (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
+        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+
+    else
+        mkdir $CURRENT_DIR/$NAME
+        (cd $CURRENT_DIR/$NAME && npm init -y)        
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+
+        (cd $CURRENT_DIR/$NAME && jq '.main = "'${opts["--entry"]}'" | .type = "module"' package.json > tmp.json && mv tmp.json package.json)
+        (cd `pwd`/$NAME && npm install express nodemon express-handlebars dotenv )
+
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+        
+        sed -e "s/{{NAME}}/$NAME/" \
+            -e "s/{{PORT}}/${opts["--port"]}/" \
+            "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
+
+        cp -r $KUBEFS_CONFIG/scripts/templates/local-frontend/views $CURRENT_DIR/$NAME/views
+
+        (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"express.js\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
+        append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name
+
+    fi
     return 0
 }
 
