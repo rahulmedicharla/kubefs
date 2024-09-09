@@ -12,7 +12,7 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the frontend framework to use [express.js | next.js | angular] | default: express.js 
+            : specify the frontend framework to use [express | next] | default: express.js 
     "
 }
 
@@ -266,14 +266,13 @@ create_frontend(){
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
     fi
-
-    mkdir $CURRENT_DIR/$NAME
     
     local_host=$(hostname -I | awk '{print $1}')
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
-    if [ ${opts["--framework"]} == "next.js" ]; then
+    if [ ${opts["--framework"]} == "next" ]; then
+        mkdir $CURRENT_DIR/$NAME
         (cd $CURRENT_DIR/$NAME && npx create-next-app --ts . )
 
         if [ $? -ne 0 ]; then
@@ -283,15 +282,15 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.build = "export PORT='${opts["--port"]}' && next build" | .scripts.start = "export PORT='${opts["--port"]}' && next start" | .scripts.lint = "export PORT='${opts["--port"]}' && next lint"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next.js\""  $SCAFFOLD -i )
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
         (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
         append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
 
-
     else
+        mkdir $CURRENT_DIR/$NAME
         (cd $CURRENT_DIR/$NAME && npm init -y)        
         if [ $? -ne 0 ]; then
             return 1

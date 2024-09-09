@@ -134,7 +134,7 @@ build(){
         "frontend")
             
             case "$framework" in
-                "next.js")
+                "next")
                     sed -e "s/{{PORT}}/${port}/" \
                         -e "s/{{MEDIUM}}/RUN npm run build/" \
                         -e "s/{{CMD}}/\"npm\", \"start\"/" \
