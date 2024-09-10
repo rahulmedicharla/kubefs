@@ -12,8 +12,8 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the frontend framework to use [express | next] default: express.js
-            : specify the api framework to use [go | fast] default: go 
+            : specify the frontend framework to use [express | next] default: express
+            : specify the api framework to use [express | go | fast] default: express 
     "
 }
 
@@ -219,7 +219,7 @@ create_api() {
     
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "8080" "main" "go" $@)
+    eval $(parse_optional_params "8080" "main" "express" $@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
@@ -253,7 +253,7 @@ create_api() {
             append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "source venv/bin/activate && uvicorn main:app --port ${opts["--port"]}" api "$local_host" "${cluster_host}" $sanitized_name
 
         ;;
-        *) 
+        "go") 
             mkdir $CURRENT_DIR/$NAME
             (cd $CURRENT_DIR/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
 
@@ -272,6 +272,33 @@ create_api() {
             (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
             append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}.go" api "$local_host" "${cluster_host}" $sanitized_name        
+        ;;
+        *)
+            mkdir $CURRENT_DIR/$NAME
+            (cd $CURRENT_DIR/$NAME && npm init -y)
+
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
+
+            (cd $CURRENT_DIR/$NAME && jq '.main = "'${opts["--entry"]}'" | .type = "module"' package.json > tmp.json && mv tmp.json package.json)
+            (cd $CURRENT_DIR/$NAME && npm install express nodemon dotenv)
+
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
+            
+            sed -e "s/{{NAME}}/$NAME/" \
+                -e "s/{{PORT}}/${opts["--port"]}/" \
+                "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-express.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}.js"
+
+            (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+            (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"api\" | .project.framework=\"express\"" "$SCAFFOLD" -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}.js\"" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}.js" api "$local_host" "${cluster_host}" $sanitized_name        
         ;;
     esac
     return 0
@@ -321,7 +348,7 @@ create_frontend(){
         fi
 
         (cd $CURRENT_DIR/$NAME && jq '.main = "'${opts["--entry"]}'" | .type = "module"' package.json > tmp.json && mv tmp.json package.json)
-        (cd `pwd`/$NAME && npm install express nodemon express-handlebars dotenv )
+        (cd $CURRENT_DIR/$NAME && npm install express nodemon express-handlebars dotenv )
 
         if [ $? -ne 0 ]; then
             return 1

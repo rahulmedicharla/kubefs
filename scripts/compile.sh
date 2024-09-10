@@ -133,10 +133,23 @@ build(){
                             
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore && echo "venv/" >> .dockerignore && echo "__pycache__" >> .dockerignore)
                     ;;
-                *)
+                "go")
                     sed -e "s/{{PORT}}/${port}/" \
                         -e "s/{{NAME}}/$NAME/" \
                         "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{HOST_PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                            
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+                    ;;
+                *)
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{MEDIUM}}//" \
+                        -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile-express.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+
                     sed -e "s/{{PORT}}/${port}/" \
                         -e "s/{{HOST_PORT}}/${port}/" \
                         -e "s/{{NAME}}/$NAME/" \
