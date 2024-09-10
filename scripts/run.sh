@@ -116,7 +116,7 @@ run_unique(){
         echo "Serving $NAME on port $port"
         echo "Use Ctrl C. to stop serving $NAME"
 
-        (cd $CURRENT_DIR/$NAME && $local_run)
+        (cd $CURRENT_DIR/$NAME && eval $local_run)
     fi
 
     return 0
