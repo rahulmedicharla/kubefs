@@ -117,16 +117,35 @@ build(){
 
     case "$type" in
         "api")
-            sed -e "s/{{PORT}}/${port}/" \
-                -e "s/{{NAME}}/$NAME/" \
-                "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-            sed -e "s/{{PORT}}/${port}/" \
-                -e "s/{{HOST_PORT}}/${port}/" \
-                -e "s/{{NAME}}/$NAME/" \
-                "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
 
-            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
-
+            case "$framework" in
+                "fast")
+                    entry="${entry%.py}"
+                    (cd $CURRENT_DIR/$NAME && source venv/bin/activate && pip freeze > requirements.txt && deactivate)
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{PORT}}/$port/" \
+                        -e "s/{{ENTRY}}/$entry/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile-fast.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{HOST_PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                            
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore && echo "venv/" >> .dockerignore && echo "__pycache__" >> .dockerignore)
+                    ;;
+                *)
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    sed -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{HOST_PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                            
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+                    ;;
+            esac
+            
             for env in "${env_vars[@]}"; do
                 yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done
@@ -191,8 +210,8 @@ build(){
     esac
 
     # remove old docker image
-    docker rmi $NAME > /dev/null 2>&1
-    docker rmi $(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml) > /dev/null 2>&1
+    docker rmi $NAME:latest > /dev/null 2>&1
+    docker rmi $(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml):latest > /dev/null 2>&1
 
     # build docker image
     (cd $CURRENT_DIR/$NAME && docker buildx build -t $NAME:latest .)

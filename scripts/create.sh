@@ -12,7 +12,8 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the frontend framework to use [express | next] | default: express.js 
+            : specify the frontend framework to use [express | next] default: express.js
+            : specify the api framework to use [go | fast] default: go 
     "
 }
 
@@ -188,7 +189,7 @@ create_db(){
 
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "9042" "default" $@)
+    eval $(parse_optional_params "9042" "default" "cassandra"$@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
@@ -218,7 +219,7 @@ create_api() {
     
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "8080" "main.go" $@)
+    eval $(parse_optional_params "8080" "main" "go" $@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
@@ -226,30 +227,53 @@ create_api() {
         return 1
     fi
 
-    mkdir $CURRENT_DIR/$NAME
-    (cd $CURRENT_DIR/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
-
-    if [ $? -ne 0 ]; then
-        return 1
-    fi
-
+    
     local_host=$(hostname -I | awk '{print $1}')
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
-
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
-    sed -e "s/{{PORT}}/${opts["--port"]}/" \
-        -e "s/{{NAME}}/$NAME/" \
-        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
+    case ${opts["--framework"]} in
+        "fast")
+            mkdir $CURRENT_DIR/$NAME
+            (cd $CURRENT_DIR/$NAME && python3 -m venv venv && source venv/bin/activate && pip install fastapi uvicorn && deactivate)
+            
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
 
-    (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"api\"" $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}\"" $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}" api "$local_host" "${cluster_host}" $sanitized_name
+            sed -e "s/{{NAME}}/$NAME/" \
+                "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-fast.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}.py"
+            
+            (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+            (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"api\" | .project.framework=\"fast\"" "$SCAFFOLD" -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"source venv/bin/activate && uvicorn main:app --port ${opts["--port"]}\"" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "source venv/bin/activate && uvicorn main:app --port ${opts["--port"]}" api "$local_host" "${cluster_host}" $sanitized_name
 
+        ;;
+        *) 
+            mkdir $CURRENT_DIR/$NAME
+            (cd $CURRENT_DIR/$NAME && go mod init $NAME && go get github.com/gorilla/mux)
+
+            if [ $? -ne 0 ]; then
+                return 1
+            fi
+
+            sed -e "s/{{PORT}}/${opts["--port"]}/" \
+            -e "s/{{NAME}}/$NAME/" \
+            "$KUBEFS_CONFIG/scripts/templates/local-api/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}.go"
+
+            (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+            (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"api\" | .project.framework=\"go\"" "$SCAFFOLD" -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}.go\"" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}.go" api "$local_host" "${cluster_host}" $sanitized_name        
+        ;;
+    esac
     return 0
 }
 

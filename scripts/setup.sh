@@ -35,6 +35,17 @@ download_dependencies(){
         fi
     fi
 
+    #Downloading python if not downloaded
+    if !(command -v python3 &> /dev/null); then
+        echo "Installing python..."
+        brew install python
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install python. Exiting..."
+            return 1
+        fi
+    fi
+
     # prompt to download minikube
     if !(command -v minikube &> /dev/null); then
         echo "Downloading minikube..."
