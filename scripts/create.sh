@@ -12,7 +12,7 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the frontend framework to use [express | next] default: express
+            : specify the frontend framework to use [express | next | vue] default: express
             : specify the api framework to use [express | go | fast] default: express 
     "
 }
@@ -339,7 +339,23 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
         append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+    elif [ ${opts["--framework"]} == "vue" ]; then
+        npm create vue@latest $NAME
 
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+
+        (cd $CURRENT_DIR/$NAME && npm i)
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'" | .scripts.preview = "vite preview --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
+
+        (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.vue\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"vue\""  $SCAFFOLD -i )
+        (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
+        append_to_manifest $NAME "App.vue" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
     else
         mkdir $CURRENT_DIR/$NAME
         (cd $CURRENT_DIR/$NAME && npm init -y)        

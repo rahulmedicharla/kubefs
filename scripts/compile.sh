@@ -176,6 +176,17 @@ build(){
                         -e "s/{{NAME}}/$NAME/" \
                         "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
+                "vue")
+                    sed -e "s/{{PORT}}/${port}/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/nginx-template.conf" > "$CURRENT_DIR/$NAME/nginx.conf"
+
+                    sed -e "s/{{PORT}}/${port}/" \
+                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-nginx-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    sed -e "s/{{HOST_PORT}}/${port}/" \
+                        -e "s/{{PORT}}/${port}/" \
+                        -e "s/{{NAME}}/$NAME/" \
+                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    ;;
                 *)
                     sed -e "s/{{PORT}}/${port}/" \
                         -e "s/{{MEDIUM}}//" \
