@@ -122,39 +122,49 @@ build(){
                 "fast")
                     entry="${entry%.py}"
                     (cd $CURRENT_DIR/$NAME && source venv/bin/activate && pip freeze > requirements.txt && deactivate)
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{PORT}}/$port/" \
-                        -e "s/{{ENTRY}}/$entry/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile-fast.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{HOST_PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-dockerfile-fast.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{PORT}}/$port/" \
+                        -i -e "s/{{ENTRY}}/$entry/" \
+                        "$CURRENT_DIR/$NAME/Dockerfile"
+
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                             
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore && echo "venv/" >> .dockerignore && echo "__pycache__" >> .dockerignore)
                     ;;
                 "go")
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{HOST_PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile                
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/Dockerfile"
+                    
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
+
                             
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
                 *)
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{MEDIUM}}//" \
-                        -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-dockerfile-express.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-dockerfile-express.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{MEDIUM}}//" \
+                        -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
+                        "$CURRENT_DIR/$NAME/Dockerfile"
 
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{HOST_PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
-                            
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
+        
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
             esac
@@ -167,36 +177,46 @@ build(){
             
             case "$framework" in
                 "next")
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{MEDIUM}}/RUN npm run build/" \
-                        -e "s/{{CMD}}/\"npm\", \"start\"/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-                    sed -e "s/{{HOST_PORT}}/${port}/" \
-                        -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{MEDIUM}}/RUN npm run build/" \
+                        -i -e "s/{{CMD}}/\"npm\", \"start\"/" \
+                        "$CURRENT_DIR/$NAME/Dockerfile"
+
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$
+                    NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 "vue")
-                    sed -e "s/{{PORT}}/${port}/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/nginx-template.conf" > "$CURRENT_DIR/$NAME/nginx.conf"
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/nginx-template.conf -O $CURRENT_DIR/$NAME/nginx.conf
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        "$CURRENT_DIR/$NAME/nginx.conf"
 
-                    sed -e "s/{{PORT}}/${port}/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-nginx-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-                    sed -e "s/{{HOST_PORT}}/${port}/" \
-                        -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-nginx-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        "$CURRENT_DIR/$NAME/Dockerfile"
+                    
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 *)
-                    sed -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{MEDIUM}}//" \
-                        -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
-                        "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend-dockerfile.conf" > "$CURRENT_DIR/$NAME/Dockerfile"
-                    sed -e "s/{{HOST_PORT}}/${port}/" \
-                        -e "s/{{PORT}}/${port}/" \
-                        -e "s/{{NAME}}/$NAME/" \
-                        "$KUBEFS_CONFIG/scripts/templates/shared/template-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
-
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{MEDIUM}}//" \
+                        -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
+                        "$CURRENT_DIR/$NAME/Dockerfile"
+                    
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{NAME}}/$NAME/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
             esac
 
@@ -209,14 +229,14 @@ build(){
         "db")
             host=$(hostname -I | awk '{print $1}')
 
-            sed -e "s/{{HOSTIP}}/${host}/" \
-                -e "s/{{HOST_PORT}}/${port}/" \
-                -e "s/{{PORT}}/${port}/" \
-                -e "s/{{ENTRY}}/${entry}/" \
-                "$KUBEFS_CONFIG/scripts/templates/local-db/template-db-compose.conf" > "$CURRENT_DIR/$NAME/docker-compose.yaml"
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/scripts/templates/local-db/template-db-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            sed -i -e "s/{{HOSTIP}}/${host}/" \
+                -i -e "s/{{HOST_PORT}}/${port}/" \
+                -i -e "s/{{PORT}}/${port}/" \
+                -i -e "s/{{ENTRY}}/${entry}/" \
+                "$CURRENT_DIR/$NAME/docker-compose.yaml"
 
             (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
-            
             
             if [ "$docker_run" == "null" ]; then
                 yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
