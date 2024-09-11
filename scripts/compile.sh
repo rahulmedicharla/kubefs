@@ -229,7 +229,7 @@ build(){
         "db")
             host=$(hostname -I | awk '{print $1}')
 
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/scripts/templates/local-db/template-db-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-db-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
             sed -i -e "s/{{HOSTIP}}/${host}/" \
                 -i -e "s/{{HOST_PORT}}/${port}/" \
                 -i -e "s/{{PORT}}/${port}/" \
