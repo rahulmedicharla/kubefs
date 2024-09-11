@@ -68,32 +68,42 @@ helmify(){
 
     helmify_database(){
         NAME=$1
-        cp -r $KUBEFS_CONFIG/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
-        sed -e "s#{{NAME}}#$NAME#" \
-            -e "s#{{IMAGE}}#cassandra#" \
-            -e "s#{{PORT}}#$port#" \
-            -e "s#{{TAG}}#latest#" \
-            -e "s#{{SERVICE_TYPE}}#None#" \
-            -e "s#{{ENTRY}}#$entry#" \
-            "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
-        
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/db/*" -d /tmp
+        cp -r /tmp/kubefs-main/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-main
+
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        sed -i -e "s#{{NAME}}#$NAME#" \
+            -i -e "s#{{IMAGE}}#cassandra#" \
+            -i -e "s#{{PORT}}#$port#" \
+            -i -e "s#{{TAG}}#latest#" \
+            -i -e "s#{{SERVICE_TYPE}}#None#" \
+            -i -e "s#{{ENTRY}}#$entry#" \
+            "$CURRENT_DIR/$NAME/deploy/values.yaml"
+
         for env in "${env_vars[@]}"; do
             IFS='=' read -r -a env_parts <<< "$env"
             yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-        done
-        
+        done        
     }
 
     helmify_frontend(){
         NAME=$1
-        cp -r $KUBEFS_CONFIG/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
-        sed -e "s#{{NAME}}#$NAME#" \
-            -e "s#{{IMAGE}}#${docker_repo}#" \
-            -e "s#{{PORT}}#$port#" \
-            -e "s#{{TAG}}#latest#" \
-            -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
-            -e "s#{{ENTRY}}#$entry#" \
-            "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/frontend/*" -d /tmp
+        cp -r /tmp/kubefs-main/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-main
+
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        sed -i -e "s#{{NAME}}#$NAME#" \
+            -i -e "s#{{IMAGE}}#${docker_repo}#" \
+            -i -e "s#{{PORT}}#$port#" \
+            -i -e "s#{{TAG}}#latest#" \
+            -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
+            -i -e "s#{{ENTRY}}#$entry#" \
+            "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
             IFS='=' read -r -a env_parts <<< "$env"
@@ -103,14 +113,19 @@ helmify(){
 
     helmify_api(){
         NAME=$1
-        cp -r $KUBEFS_CONFIG/scripts/templates/deployment/api $CURRENT_DIR/$NAME/deploy
-        sed -e "s#{{NAME}}#$NAME#" \
-            -e "s#{{IMAGE}}#${docker_repo}#" \
-            -e "s#{{PORT}}#$port#" \
-            -e "s#{{TAG}}#latest#" \
-            -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
-            -e "s#{{ENTRY}}#$entry#" \
-            "$KUBEFS_CONFIG/scripts/templates/deployment/helm-values.conf" > "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/api/*" -d /tmp
+        cp -r /tmp/kubefs-main/scripts/templates/deployment/api $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-main
+
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        sed -i -e "s#{{NAME}}#$NAME#" \
+            -i -e "s#{{IMAGE}}#${docker_repo}#" \
+            -i -e "s#{{PORT}}#$port#" \
+            -i -e "s#{{TAG}}#latest#" \
+            -i -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
+            -i -e "s#{{ENTRY}}#$entry#" \
+            "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
             IFS='=' read -r -a env_parts <<< "$env"
@@ -125,8 +140,8 @@ helmify(){
     esac
 
     if [ ${#secrets[@]} -gt 0 ]; then
-        cp $KUBEFS_CONFIG/scripts/templates/deployment/shared/template-secret.conf $CURRENT_DIR/$NAME/deploy/templates/secret.yaml
-
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/shared/template-secret.conf -O $CURRENT_DIR/$NAME/deploy/templates/secret.yaml
+        
         for secret in "${secrets[@]}"; do
             IFS='=' read -r -a secret_parts <<< "$secret"
             yq e ".secrets += [{\"name\" : \"${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
