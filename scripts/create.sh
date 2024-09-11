@@ -241,8 +241,10 @@ create_api() {
                 return 1
             fi
 
-            sed -e "s/{{NAME}}/$NAME/" \
-                "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-fast.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}.py"
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-fast.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}.py"
+
+            sed -i -e "s/{{NAME}}/$NAME/" \
+                "$CURRENT_DIR/$NAME/${opts["--entry"]}.py"
             
             (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
             (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"api\" | .project.framework=\"fast\"" "$SCAFFOLD" -i)
@@ -261,9 +263,11 @@ create_api() {
                 return 1
             fi
 
-            sed -e "s/{{PORT}}/${opts["--port"]}/" \
-            -e "s/{{NAME}}/$NAME/" \
-            "$KUBEFS_CONFIG/scripts/templates/local-api/template-api.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}.go"
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}.go"
+
+            sed -i -e "s/{{PORT}}/${opts["--port"]}/" \
+                -i -e "s/{{NAME}}/$NAME/" \
+                "$CURRENT_DIR/$NAME/${opts["--entry"]}.go"
 
             (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
             (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"api\" | .project.framework=\"go\"" "$SCAFFOLD" -i)
@@ -287,10 +291,12 @@ create_api() {
             if [ $? -ne 0 ]; then
                 return 1
             fi
-            
-            sed -e "s/{{NAME}}/$NAME/" \
-                -e "s/{{PORT}}/${opts["--port"]}/" \
-                "$KUBEFS_CONFIG/scripts/templates/local-api/template-api-express.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}.js"
+
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-express.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}.js"
+
+            sed -i -e "s/{{NAME}}/$NAME/" \
+                -i -e "s/{{PORT}}/${opts["--port"]}/" \
+                "$CURRENT_DIR/$NAME/${opts["--entry"]}.js"
 
             (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
             (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"api\" | .project.framework=\"express\"" "$SCAFFOLD" -i)
@@ -310,7 +316,7 @@ create_frontend(){
 
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "3000" "index.js" "express.js" $@)
+    eval $(parse_optional_params "3000" "index" "express" $@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
@@ -369,12 +375,16 @@ create_frontend(){
         if [ $? -ne 0 ]; then
             return 1
         fi
-        
-        sed -e "s/{{NAME}}/$NAME/" \
-            -e "s/{{PORT}}/${opts["--port"]}/" \
-            "$KUBEFS_CONFIG/scripts/templates/local-frontend/template-frontend.conf" > "$CURRENT_DIR/$NAME/${opts["--entry"]}"
 
-        cp -r $KUBEFS_CONFIG/scripts/templates/local-frontend/views $CURRENT_DIR/$NAME/views
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}".js
+        
+        sed -i -e "s/{{NAME}}/$NAME/" \
+            -i -e "s/{{PORT}}/${opts["--port"]}/" \
+            "$CURRENT_DIR/$NAME/${opts["--entry"]}".js
+        
+        (cd $CURRENT_DIR/$NAME && mkdir views && cd views && mkdir layouts)
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/views/home.handlebars -O "$CURRENT_DIR/$NAME/views/home.handlebars"
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/views/layouts/main.handlebars -O "$CURRENT_DIR/$NAME/views/layouts/main.handlebars"
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"express.js\"" $SCAFFOLD -i)
