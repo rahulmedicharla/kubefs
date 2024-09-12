@@ -344,7 +344,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "page.tsx" "80" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
     elif [ ${opts["--framework"]} == "vue" ]; then
         npm create vue@latest $NAME
 

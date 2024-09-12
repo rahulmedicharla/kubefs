@@ -91,19 +91,18 @@ helmify(){
     helmify_frontend(){
         NAME=$1
 
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/frontend/*" -d /tmp
-        cp -r /tmp/kubefs-main/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-main
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/ingress.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-ingress/scripts/templates/deployment/frontend/*" -d /tmp
+        cp -r /tmp/kubefs-ingress/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-ingress
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/ingress/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
             -i -e "s#{{IMAGE}}#${docker_repo}#" \
-            -i -e "s#{{PORT}}#$port#80" \
+            -i -e "s#{{PORT}}#80#" \
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
             -i -e "s#{{ENTRY}}#$entry#" \
-            -i -e "s#{{ENDPOINT}}#hello_world.example#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
