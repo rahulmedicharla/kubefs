@@ -164,6 +164,13 @@ deploy_all(){
     if ! minikube status /dev/null 2>&1; then
         print_warning "minikube is not running. Starting minikube with 'minikube start'"
         minikube start
+
+        kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
+        while [ $? -eq 1 ]; do
+            print_warning "Waiting for minikube to start..."
+            sleep 2
+            kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
+        done
     fi
 
     for name in "${manifest_data[@]}"; do
@@ -188,6 +195,13 @@ deploy_helper(){
     if ! minikube status > /dev/null 2>&1; then
         print_warning "minikube is not running. Starting minikube with 'minikube start'"
         minikube start
+
+        kubectl get pods -n ingress-nginx | grep -q 1/1
+        while [ $? -eq 1 ]; do
+            print_warning "Waiting for minikube to start..."
+            sleep 2
+            kubectl get pods -n ingress-nginx | grep -q 1/1
+        done
     fi
 
     deploy_unique $NAME "${opts[@]}"
