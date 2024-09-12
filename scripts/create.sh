@@ -376,7 +376,7 @@ create_frontend(){
             return 1
         fi
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/ingress/scripts/templates/local-frontend/template-frontend.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}".js
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}".js
         
         sed -i -e "s/{{NAME}}/$NAME/" \
             -i -e "s/{{PORT}}/${opts["--port"]}/" \
