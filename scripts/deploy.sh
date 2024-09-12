@@ -167,7 +167,7 @@ deploy_all(){
 
         kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
         while [ $? -eq 1 ]; do
-            print_warning "Waiting for minikube to start..."
+            print_warning "Waiting for minikube to finish setup..."
             sleep 2
             kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
         done
@@ -198,7 +198,7 @@ deploy_helper(){
 
         kubectl get pods -n ingress-nginx | grep -q 1/1
         while [ $? -eq 1 ]; do
-            print_warning "Waiting for minikube to start..."
+            print_warning "Waiting for minikube to finish setup..."
             sleep 2
             kubectl get pods -n ingress-nginx | grep -q 1/1
         done

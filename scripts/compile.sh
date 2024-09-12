@@ -204,13 +204,13 @@ build(){
                     ;;
                 *)
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        -i -e "s/{{MEDIUM}}//" \
-                        -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
+                    sed -i -e "s/{{PORT}}/80/" \
+                        -i -e "s/{{MEDIUM}}/ENV PORT=80/" \
+                        -i -e "s/{{CMD}}/\"node\", \"${entry}.js\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    sed -i -e "s/{{PORT}}/80/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
