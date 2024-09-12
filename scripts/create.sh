@@ -336,7 +336,7 @@ create_frontend(){
             return 1
         fi
 
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.build = "export PORT='${opts["--port"]}' && next build" | .scripts.start = "export PORT='${opts["--port"]}' && next start" | .scripts.lint = "export PORT='${opts["--port"]}' && next lint"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.start = "export PORT='80' && next start"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
