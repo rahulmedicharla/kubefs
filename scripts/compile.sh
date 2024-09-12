@@ -178,42 +178,39 @@ build(){
             case "$framework" in
                 "next")
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    sed -i -e "s/{{PORT}}/80/" \
                         -i -e "s/{{MEDIUM}}/RUN npm run build/" \
                         -i -e "s/{{CMD}}/\"npm\", \"start\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
 
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$
-                    NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/80/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 "vue")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/nginx-template.conf -O $CURRENT_DIR/$NAME/nginx.conf
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        "$CURRENT_DIR/$NAME/nginx.conf"
-
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-nginx-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/80/" \
+                        -i -e "s/{{MEDIUM}}/RUN npm run build/" \
+                        -i -e "s/{{CMD}}/\"npm\",\"run\",\"preview\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    sed -i -e "s/{{PORT}}/80/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 *)
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        -i -e "s/{{MEDIUM}}//" \
-                        -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
+                    sed -i -e "s/{{PORT}}/80/" \
+                        -i -e "s/{{MEDIUM}}/ENV PORT=80/" \
+                        -i -e "s/{{CMD}}/\"node\", \"${entry}.js\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    sed -i -e "s/{{PORT}}/80/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
@@ -221,7 +218,7 @@ build(){
             esac
 
             (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
-  
+            
             for env in "${env_vars[@]}"; do
                 yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done    

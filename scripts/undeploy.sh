@@ -59,7 +59,7 @@ undeploy_all(){
 
     if [ "${opts["--close-minikube"]}" == true ]; then
         while kubectl get namespaces | grep -q terminating; do
-            sleep 5
+            sleep 2
         done
         minikube stop
     fi

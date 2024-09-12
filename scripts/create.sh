@@ -336,7 +336,7 @@ create_frontend(){
             return 1
         fi
 
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.build = "export PORT='${opts["--port"]}' && next build" | .scripts.start = "export PORT='${opts["--port"]}' && next start" | .scripts.lint = "export PORT='${opts["--port"]}' && next lint"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.start = "export PORT='80' && next start"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
@@ -344,7 +344,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "page.tsx" "80" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
     elif [ ${opts["--framework"]} == "vue" ]; then
         npm create vue@latest $NAME
 
@@ -353,7 +353,7 @@ create_frontend(){
         fi
 
         (cd $CURRENT_DIR/$NAME && npm i)
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'" | .scripts.preview = "vite preview --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'" | .scripts.preview = "vite preview --port 80 --host 0.0.0.0"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.vue\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"vue\""  $SCAFFOLD -i )

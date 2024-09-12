@@ -99,7 +99,7 @@ helmify(){
         wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
             -i -e "s#{{IMAGE}}#${docker_repo}#" \
-            -i -e "s#{{PORT}}#$port#" \
+            -i -e "s#{{PORT}}#80#" \
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
             -i -e "s#{{ENTRY}}#$entry#" \
@@ -164,6 +164,13 @@ deploy_all(){
     if ! minikube status /dev/null 2>&1; then
         print_warning "minikube is not running. Starting minikube with 'minikube start'"
         minikube start
+
+        kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
+        while [ $? -eq 1 ]; do
+            print_warning "Waiting for minikube to finish setup..."
+            sleep 2
+            kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
+        done
     fi
 
     for name in "${manifest_data[@]}"; do
@@ -188,6 +195,13 @@ deploy_helper(){
     if ! minikube status > /dev/null 2>&1; then
         print_warning "minikube is not running. Starting minikube with 'minikube start'"
         minikube start
+
+        kubectl get pods -n ingress-nginx | grep -q 1/1
+        while [ $? -eq 1 ]; do
+            print_warning "Waiting for minikube to finish setup..."
+            sleep 2
+            kubectl get pods -n ingress-nginx | grep -q 1/1
+        done
     fi
 
     deploy_unique $NAME "${opts[@]}"
