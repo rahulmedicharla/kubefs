@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: {{.Values.ingress.className}}
   rules:
-    - host: {{ .Values.ingress.host | quote }}
+    - host: ""
       http:
         paths:
           - path: /
