@@ -190,16 +190,14 @@ build(){
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 "vue")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/nginx-template.conf -O $CURRENT_DIR/$NAME/nginx.conf
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        "$CURRENT_DIR/$NAME/nginx.conf"
-
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-nginx-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s/{{PORT}}/80/" \
+                        -i -e "s/{{MEDIUM}}/RUN npm run build/" \
+                        -i -e "s/{{CMD}}/\"npm\",\"run\",\"preview\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
+                    sed -i -e "s/{{PORT}}/80/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
