@@ -9,8 +9,8 @@ default_helper() {
         kubefs undeploy --help - display this help message
 
         Args:
-            --target | -t <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
-            --close-minikube | -cm - close minikube after undeploying components
+            --target | -t <local|EKS|azure|GCP> - specify the deployment target for which cluster (default is local)
+            --close | -c - stop cluster after undeploying components
     "
 }
 
@@ -18,18 +18,18 @@ parse_optional_params(){
     declare -A opts
 
     opts["--target"]=local
-    opts["--close-minikube"]=false
+    opts["--close"]=false
 
     while [ $# -gt 0 ]; do
         case $1 in
             --target | -t)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "Azure" ] || [ "$2" == "GCP" ]; then
+                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "GCP" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
                 ;;
-            --close-minikube | -cm)
-                opts["--close-minikube"]=true
+            --close | -c)
+                opts["--close"]=true
                 ;;
         esac
         shift
@@ -57,13 +57,6 @@ undeploy_all(){
         fi
     done
 
-    if [ "${opts["--close-minikube"]}" == true ]; then
-        while kubectl get namespaces | grep -q terminating; do
-            sleep 2
-        done
-        minikube stop
-    fi
-
     print_success "Undeployed all components"
     return 0
 }
@@ -80,11 +73,37 @@ undeploy_helper(){
         return 0
     fi
 
-    if [ "${opts["--close-minikube"]}" == true ]; then
+    return 0
+}
+
+undeploy_azure(){
+    NAME=$1
+    echo "Undeploying $NAME from Azure..."
+
+    if ! az account show > /dev/null 2>&1; then
+        print_warning "Azure account not logged in. Please login using 'kubefs config azure'"
+        return 1
+    fi
+
+    helm uninstall $NAME     
+    if [ $? -eq 1 ]; then
+        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+    print_success "$NAME undeployed successfully"
+
+    if [ "${opts["--close"]}" == true ]; then
         while kubectl get namespaces | grep -q terminating; do
-            sleep 5
+            sleep 2
         done
-        minikube stop
+        
+        az aks stop --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)
+        if [ $? -eq 1 ]; then
+            print_error "Error occured stopping the cluster. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+        print_success "Cluster stopped successfully"
+
     fi
 
     return 0
@@ -110,7 +129,7 @@ undeploy_unique(){
     
     case ${opts["--target"]} in
         # "EKS") deploy_eks $NAME;;
-        # "Azure") deploy_azure $NAME;;
+        "azure") undeploy_azure $NAME;;
         # "GCP") deploy_gcp $NAME;;
         *)
             helm uninstall $NAME 
@@ -118,6 +137,13 @@ undeploy_unique(){
             if [ $? -eq 1 ]; then
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
+            fi
+
+            if [ "${opts["--close"]}" == true ]; then
+                while kubectl get namespaces | grep -q terminating; do
+                    sleep 2
+                done
+                minikube stop
             fi
             ;;
     esac

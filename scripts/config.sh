@@ -5,14 +5,37 @@ default_helper() {
 
     Usage: kubefs config <COMMAND>
         kubefs config list - list all configuration data
-        kubefs config docker - configure docker configurations
+        kubefs config azure - manage azure configurations
+        kubefs config docker - manage docker configurations
         kubefs config --help - display this help message
+
+        Args:
+            --remove | -r - remove the configuration
     "
+}
+
+parse_optional_params(){
+    declare -A opts
+
+    opts["--remove"]=false
+
+    while [ $# -gt 0 ]; do
+        case $1 in
+            --remove | -r)
+                opts["--remove"]=true
+                ;;
+        esac
+        shift
+    done
+
+    echo $(declare -p opts)
 }
 
 list_configurations(){
     echo "Docker configurations:"
     pass show kubefs/config/docker
+    echo "Azure accounts":
+    az account list
 }
 
 validate_gpg_key(){
@@ -28,8 +51,52 @@ validate_gpg_key(){
     pass init "$key_id"
 }
 
+azure_config(){
+    echo "Configuring Azure configurations..."
+    CURRENT_DIR=$(pwd)
+    
+    eval $(parse_optional_params $@)
+    if [ ${opts["--remove"]} = true ]; then
+        az logout
+        yq eval 'del(.azure)' -i $CURRENT_DIR/manifest.yaml
+        return 0
+    fi
+
+    az login
+    if [ $? -eq 1 ]; then
+        print_error "Azure login failed. Please try again or create account at https://portal.azure.com"
+        return 1
+    fi
+
+    echo "Set resource group name: "
+    read resource_group
+    echo "Set cluster name: "
+    read cluster_name
+    echo "Set location: "
+    read location
+
+    if ! az account list-locations --query "[].name" -o tsv | grep -q "^$location$"; then
+        print_error "Invalid location: $location. Please enter a valid Azure region."
+        azure logout
+        return 1
+    fi
+
+    yq e -i ".azure.location = \"$location\"" $CURRENT_DIR/manifest.yaml
+    yq e -i ".azure.resource_group = \"$resource_group\"" $CURRENT_DIR/manifest.yaml
+    yq e -i ".azure.cluster_name = \"$cluster_name\"" $CURRENT_DIR/manifest.yaml
+
+    return 0
+}
+
 docker_config(){
     echo "Configuring docker configurations..."
+    
+    eval $(parse_optional_params $@)
+    if [ ${opts["--remove"]} = true ]; then
+        pass rm kubefs/config/docker
+        return 0
+    fi
+
     echo "Please enter Docker ID or email:"
     read username
     echo "Please enter password or PAT:"
@@ -37,7 +104,7 @@ docker_config(){
 
     output=$(echo "$password" | sudo docker login --username "$username" --password-stdin 2>&1)
     if [ $? -eq 1 ]; then
-        echo "" && echo "Docker login failed. Please try again or create account at https://hub.docker.com"
+        print_error "Docker login failed. Please try again or create account at https://hub.docker.com"
         return 1
     fi
 
@@ -70,6 +137,7 @@ main(){
     fi
 
     case $COMMAND in
+        "azure") azure_config $@;;
         "list") list_configurations;;
         "docker") docker_config $@;;
         "--help") default_helper;;

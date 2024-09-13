@@ -162,6 +162,16 @@ download_dependencies(){
             return 1
         fi
     fi
+
+    if !(command -v azure-cli &> /dev/null); then
+        echo "Downloading azure-cli..."
+        brew install azure-cli
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install azure-cli. Exiting..."
+            return 1
+        fi
+    fi
 }
 
 init_project() {

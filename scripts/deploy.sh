@@ -9,7 +9,7 @@ default_helper() {
         kubefs deploy --help - display this help message
 
         Args:
-            --target | -t <local|EKS|Azure|GCP> - specify the deployment target for which cluster (default is local)
+            --target | -t <local|EKS|azure|GCP> - specify the deployment target for which cluster (default is local)
             --no-deploy | -nd: Don't deploy the helm chart, only create the helm chart
             --no-helmify | -nh: Don't create the helm chart
     "
@@ -25,7 +25,7 @@ parse_optional_params(){
     while [ $# -gt 0 ]; do
         case $1 in
             --target| -t)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "Azure" ] || [ "$2" == "GCP" ]; then
+                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "GCP" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
@@ -160,19 +160,6 @@ deploy_all(){
     manifest_data=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-
-    if ! minikube status /dev/null 2>&1; then
-        print_warning "minikube is not running. Starting minikube with 'minikube start'"
-        minikube start
-
-        kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
-        while [ $? -eq 1 ]; do
-            print_warning "Waiting for minikube to finish setup..."
-            sleep 2
-            kubectl get pods -n ingress-nginx | grep -q 1/1 && kubectl get pods -n local-path-storage | grep -q 1/1
-        done
-    fi
-
     for name in "${manifest_data[@]}"; do
 
         deploy_unique $name "${opts[@]}"
@@ -192,18 +179,6 @@ deploy_helper(){
     shift
     eval "$(parse_optional_params $@)"
 
-    if ! minikube status > /dev/null 2>&1; then
-        print_warning "minikube is not running. Starting minikube with 'minikube start'"
-        minikube start
-
-        kubectl get pods -n ingress-nginx | grep -q 1/1
-        while [ $? -eq 1 ]; do
-            print_warning "Waiting for minikube to finish setup..."
-            sleep 2
-            kubectl get pods -n ingress-nginx | grep -q 1/1
-        done
-    fi
-
     deploy_unique $NAME "${opts[@]}"
 
     if [ $? -eq 1 ]; then
@@ -211,6 +186,131 @@ deploy_helper(){
         return 0
     fi
 
+    return 0
+}
+
+deploy_azure(){
+    NAME=$1
+    CURRENT_DIR=`pwd`
+
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
+        print_error "$NAME is not a valid resource"
+        default_helper
+        return 1
+    fi
+
+    if ! az account show > /dev/null 2>&1; then
+        print_warning "Azure account not logged in. Please login using 'kubefs config azure'"
+        return 1
+    fi
+
+    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Compute; then
+        print_warning "Azure Compute provider not registered. Registering provider..."
+        az provider register --namespace Microsoft.Compute
+        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Compute; do
+            print_warning "Waiting for provider to finish registration..."
+            sleep 2
+        done
+    fi
+
+    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; then
+        print_warning "Azure ContainerService provider not registered. Registering provider..."
+        az provider register --namespace Microsoft.ContainerService
+        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; do
+            print_warning "Waiting for provider to finish registration..."
+            sleep 2
+        done
+    fi
+
+    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; then
+        print_warning "Azure Network provider not registered. Registering provider..."
+        az provider register --namespace Microsoft.Network
+        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; do
+            print_warning "Waiting for provider to finish registration..."
+            sleep 2
+        done
+    fi
+
+    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; then
+        print_warning "Azure Storage provider not registered. Registering provider..."
+        az provider register --namespace Microsoft.Storage
+        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; do
+            print_warning "Waiting for provider to finish registration..."
+            sleep 2
+        done
+    fi
+
+    if az group exists --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" | grep -q "false"; then
+        print_warning "Resource group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) does not exist. Creating resource group..."
+        az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --location "$(yq e '.azure.location' $CURRENT_DIR/manifest.yaml)"
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occurred deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+
+        az group wait --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --created
+    fi
+
+    if ! az aks list -o table | grep -q $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml); then
+        print_warning "AKS cluster does not exist. Creating AKS cluster..."
+        az aks create --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --node-count 1 --generate-ssh-keys
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+    if az aks show --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --query "powerState.code" -o tsv | grep -q "Stopped" ; then
+        print_warning "AKS cluster is not started. Starting AKS cluster..."
+
+        az aks start --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml)
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+    az aks get-credentials --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml)
+    if [ $? -eq 1 ]; then
+        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+
+    echo "Deploying $NAME ..."
+    if [ "${opts["--no-helmify"]}" == false ]; then
+        rm -rf $CURRENT_DIR/$NAME/deploy
+        
+        helmify $NAME
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured helmifying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+    if [ "${opts["--no-deploy"]}" == false ]; then
+
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+  
+        NAMESPACE=ingress-nginx
+        helm install ingress-nginx ingress-nginx/ingress-nginx \
+            --create-namespace \
+            --namespace $NAMESPACE \
+            --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
+            --set controller.service.externalTrafficPolicy=Local
+
+        helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+    print_success "$NAME deployed successfully"
     return 0
 }
 
@@ -234,7 +334,12 @@ deploy_unique(){
 
     case ${opts["--target"]} in
         # "EKS") deploy_eks $NAME;;
-        # "Azure") deploy_azure $NAME;;
+        "azure")
+            deploy_azure $NAME
+            if [ $? -eq 1 ]; then
+                return 1
+            fi 
+            ;;
         # "GCP") deploy_gcp $NAME;;
         *)
 
@@ -250,6 +355,18 @@ deploy_unique(){
             fi
 
             if [ "${opts["--no-deploy"]}" == false ]; then
+                if ! minikube status > /dev/null 2>&1; then
+                    print_warning "minikube is not running. Starting minikube with 'minikube start'"
+                    minikube start
+                    kubectl config use-context minikube
+
+                    kubectl get pods -n ingress-nginx | grep -q 1/1
+                    while [ $? -eq 1 ]; do
+                        print_warning "Waiting for minikube to finish setup..."
+                        sleep 2
+                        kubectl get pods -n ingress-nginx | grep -q 1/1
+                    done
+                fi
 
                 helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
 
