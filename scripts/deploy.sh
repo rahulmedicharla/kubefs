@@ -296,11 +296,13 @@ deploy_azure(){
         helm repo update
   
         NAMESPACE=ingress-nginx
-        helm install ingress-nginx ingress-nginx/ingress-nginx \
-            --create-namespace \
-            --namespace $NAMESPACE \
-            --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
-            --set controller.service.externalTrafficPolicy=Local
+        if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
+            helm install ingress-nginx ingress-nginx/ingress-nginx \
+                --create-namespace \
+                --namespace $NAMESPACE \
+                --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
+                --set controller.service.externalTrafficPolicy=Local
+        fi
 
         helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
 
@@ -330,7 +332,7 @@ deploy_unique(){
         return 1
     fi
 
-    echo "Deploying $NAME ..."
+    echo "Deploying $NAME to ${opts["--target"]}..."
 
     case ${opts["--target"]} in
         # "EKS") deploy_eks $NAME;;

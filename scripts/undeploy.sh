@@ -85,6 +85,12 @@ undeploy_azure(){
         return 1
     fi
 
+    az aks get-credentials --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)
+    if [ $? -eq 1 ]; then
+        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+
     helm uninstall $NAME     
     if [ $? -eq 1 ]; then
         print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
@@ -132,8 +138,13 @@ undeploy_unique(){
         "azure") undeploy_azure $NAME;;
         # "GCP") deploy_gcp $NAME;;
         *)
-            helm uninstall $NAME 
+            kubectl config use-context minikube
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
 
+            helm uninstall $NAME 
             if [ $? -eq 1 ]; then
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
