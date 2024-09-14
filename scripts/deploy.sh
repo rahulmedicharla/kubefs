@@ -207,85 +207,6 @@ deploy_azure(){
         return 1
     fi
 
-    if ! az account show > /dev/null 2>&1; then
-        print_warning "Azure account not logged in. Please login using 'kubefs config azure'"
-        return 1
-    fi
-
-    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Compute; then
-        print_warning "Azure Compute provider not registered. Registering provider..."
-        az provider register --namespace Microsoft.Compute
-        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Compute; do
-            print_warning "Waiting for provider to finish registration..."
-            sleep 2
-        done
-    fi
-
-    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; then
-        print_warning "Azure ContainerService provider not registered. Registering provider..."
-        az provider register --namespace Microsoft.ContainerService
-        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; do
-            print_warning "Waiting for provider to finish registration..."
-            sleep 2
-        done
-    fi
-
-    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; then
-        print_warning "Azure Network provider not registered. Registering provider..."
-        az provider register --namespace Microsoft.Network
-        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; do
-            print_warning "Waiting for provider to finish registration..."
-            sleep 2
-        done
-    fi
-
-    if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; then
-        print_warning "Azure Storage provider not registered. Registering provider..."
-        az provider register --namespace Microsoft.Storage
-        while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; do
-            print_warning "Waiting for provider to finish registration..."
-            sleep 2
-        done
-    fi
-
-    if az group exists --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" | grep -q "false"; then
-        print_warning "Resource group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) does not exist. Creating resource group..."
-        az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --location "$(yq e '.azure.location' $CURRENT_DIR/manifest.yaml)"
-
-        if [ $? -eq 1 ]; then
-            print_error "Error occurred deploying $NAME. Please try again or use 'kubefs --help' for more information."
-            return 1
-        fi
-
-        az group wait --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --created
-    fi
-
-    if ! az aks list -o table | grep -q $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml); then
-        print_warning "AKS cluster does not exist. Creating AKS cluster..."
-        az aks create --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --node-count 1 --generate-ssh-keys
-
-        if [ $? -eq 1 ]; then
-            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
-            return 1
-        fi
-    fi
-
-    if az aks show --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --query "powerState.code" -o tsv | grep -q "Stopped" ; then
-        print_warning "AKS cluster is not started. Starting AKS cluster..."
-
-        az aks start --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml)
-        if [ $? -eq 1 ]; then
-            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
-            return 1
-        fi
-    fi
-
-    az aks get-credentials --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml)
-    if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
-        return 1
-    fi
-
     echo "Deploying $NAME ..."
     if [ "${opts["--no-helmify"]}" == false ]; then
         rm -rf $CURRENT_DIR/$NAME/deploy
@@ -299,6 +220,85 @@ deploy_azure(){
     fi
 
     if [ "${opts["--no-deploy"]}" == false ]; then
+
+        if ! az account show > /dev/null 2>&1; then
+            print_warning "Azure account not logged in. Please login using 'kubefs config azure'"
+            return 1
+        fi
+
+        if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Compute; then
+            print_warning "Azure Compute provider not registered. Registering provider..."
+            az provider register --namespace Microsoft.Compute
+            while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Compute; do
+                print_warning "Waiting for provider to finish registration..."
+                sleep 2
+            done
+        fi
+
+        if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; then
+            print_warning "Azure ContainerService provider not registered. Registering provider..."
+            az provider register --namespace Microsoft.ContainerService
+            while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; do
+                print_warning "Waiting for provider to finish registration..."
+                sleep 2
+            done
+        fi
+
+        if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; then
+            print_warning "Azure Network provider not registered. Registering provider..."
+            az provider register --namespace Microsoft.Network
+            while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; do
+                print_warning "Waiting for provider to finish registration..."
+                sleep 2
+            done
+        fi
+
+        if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; then
+            print_warning "Azure Storage provider not registered. Registering provider..."
+            az provider register --namespace Microsoft.Storage
+            while ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; do
+                print_warning "Waiting for provider to finish registration..."
+                sleep 2
+            done
+        fi
+
+        if az group exists --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" | grep -q "false"; then
+            print_warning "Resource group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) does not exist. Creating resource group..."
+            az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --location "$(yq e '.azure.location' $CURRENT_DIR/manifest.yaml)"
+
+            if [ $? -eq 1 ]; then
+                print_error "Error occurred deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+
+            az group wait --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --created
+        fi
+
+        if ! az aks list -o table | grep -q $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml); then
+            print_warning "AKS cluster does not exist. Creating AKS cluster..."
+            az aks create --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --node-count 1 --generate-ssh-keys
+
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+        fi
+
+        if az aks show --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --query "powerState.code" -o tsv | grep -q "Stopped" ; then
+            print_warning "AKS cluster is not started. Starting AKS cluster..."
+
+            az aks start --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml)
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+        fi
+
+        az aks get-credentials --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml)
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
 
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
         helm repo update
@@ -318,6 +318,7 @@ deploy_azure(){
             print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
             return 1
         fi
+
     fi
 
     print_success "$NAME deployed successfully"

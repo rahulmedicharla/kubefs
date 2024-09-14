@@ -57,18 +57,22 @@ azure_config(){
     
     eval $(parse_optional_params $@)
     if [ ${opts["--remove"]} = true ]; then
-        az aks delete --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --yes
-        if [ $? -eq 1 ]; then
-            print_error "Error occured deleting Azure resources. Please try again or use 'kubefs --help' for more information."
-            return 1
+        if az aks list | grep -q $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml); then
+            az aks delete --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --yes
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deleting Azure resources. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
         fi
 
-        az group delete --name $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --yes
-        if [ $? -eq 1 ]; then
-            print_error "Error occured deleting Azure resources. Please try again or use 'kubefs --help' for more information."
-            return 1
+        if az group list | grep -q $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml); then
+            az group delete --name $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --yes
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deleting Azure resources. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
         fi
-
+        
         az logout
         yq eval 'del(.azure)' -i $CURRENT_DIR/manifest.yaml
         return 0

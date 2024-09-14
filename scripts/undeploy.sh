@@ -38,6 +38,28 @@ parse_optional_params(){
     echo $(declare -p opts)
 }
 
+stop(){
+    TARGET=$1
+    case $TARGET in
+        # "EKS") ;;
+        "azure")
+            az aks stop --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)
+            if [ $? -eq 1 ]; then
+                print_error "Error occured stopping the cluster. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi 
+        ;;
+        # "GCP") ;;
+        *)
+            minikube stop
+            if [ $? -eq 1 ]; then
+                print_error "Error occured stopping the cluster. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+        ;;
+    esac
+}
+
 undeploy_all(){
     echo "Undeploying all components..."
 
@@ -57,6 +79,14 @@ undeploy_all(){
         fi
     done
 
+    if [ ${opts["--close"]} = true ]; then
+        while kubectl get namespaces | grep -q terminating; do
+            sleep 2
+        done
+        
+        stop ${opts["--target"]}
+    fi
+
     print_success "Undeployed all components"
     return 0
 }
@@ -71,6 +101,14 @@ undeploy_helper(){
     if [ $? -eq 1 ]; then
         print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 0
+    fi
+
+    if [ ${opts["--close"]} = true ]; then
+        while kubectl get namespaces | grep -q terminating; do
+            sleep 2
+        done
+        
+        stop ${opts["--target"]}
     fi
 
     return 0
@@ -96,22 +134,8 @@ undeploy_azure(){
         print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 1
     fi
+
     print_success "$NAME undeployed successfully"
-
-    if [ "${opts["--close"]}" == true ]; then
-        while kubectl get namespaces | grep -q terminating; do
-            sleep 2
-        done
-        
-        az aks stop --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)
-        if [ $? -eq 1 ]; then
-            print_error "Error occured stopping the cluster. Please try again or use 'kubefs --help' for more information."
-            return 1
-        fi
-        print_success "Cluster stopped successfully"
-
-    fi
-
     return 0
 }
 
@@ -148,13 +172,6 @@ undeploy_unique(){
             if [ $? -eq 1 ]; then
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
-            fi
-
-            if [ "${opts["--close"]}" == true ]; then
-                while kubectl get namespaces | grep -q terminating; do
-                    sleep 2
-                done
-                minikube stop
             fi
             ;;
     esac
