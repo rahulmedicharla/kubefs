@@ -80,6 +80,7 @@ helmify(){
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#None#" \
             -i -e "s#{{ENTRY}}#$entry#" \
+            -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
 
         for env in "${env_vars[@]}"; do
@@ -90,6 +91,11 @@ helmify(){
 
     helmify_frontend(){
         NAME=$1
+        hostname=$(yq e '.project.hostname' $CURRENT_DIR/$NAME/scaffold.yaml)
+
+        if [ "$hostname" == "null" ]; then
+            hostname=""
+        fi
 
         wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
         unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/frontend/*" -d /tmp
@@ -103,6 +109,7 @@ helmify(){
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
             -i -e "s#{{ENTRY}}#$entry#" \
+            -i -e "s#{{HOST}}#$hostname#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
@@ -125,6 +132,7 @@ helmify(){
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
             -i -e "s#{{ENTRY}}#$entry#" \
+            -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
