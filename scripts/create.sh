@@ -12,8 +12,8 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the frontend framework to use [express | next | vue] default: express
-            : specify the api framework to use [express | go | fast] default: express 
+            : specify the framework to use for frontend resource [express | next | vue] default: express
+            : specify the framework to use for api resource [express | go | fast] default: express 
     "
 }
 
@@ -144,6 +144,7 @@ create_helper_func() {
     if [ $? -eq 1 ]; then
         print_error "Error occured creating $NAME. Please try again or use 'kubefs --help' for more information."
         rm -rf "`pwd`/$NAME"
+        remove_from_manifest $NAME
         return 1
     fi
 
@@ -344,7 +345,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "page.tsx" "80" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
     elif [ ${opts["--framework"]} == "vue" ]; then
         npm create vue@latest $NAME
 
@@ -392,9 +393,15 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name 
 
     fi
+
+    print_warning "Please enter the hostname to the frontend application: default is all hosts (*)"
+    read hostname
+    
+    yq e ".project.hostname = \"$hostname\"" $CURRENT_DIR/$NAME/$SCAFFOLD -i
+
     return 0
 }
 

@@ -32,8 +32,19 @@ docker_config(){
     echo "Configuring docker configurations..."
     echo "Please enter Docker ID or email:"
     read username
+
+    if [ -z $username ]; then
+        print_error "Username can't be empty"
+        return 1
+    fi
+
     echo "Please enter password or PAT:"
     read -s password
+
+    if [ -z $password ]; then
+        print_error "Password can't be empty"
+        return 1
+    fi
 
     output=$(echo "$password" | sudo docker login --username "$username" --password-stdin 2>&1)
     if [ $? -eq 1 ]; then

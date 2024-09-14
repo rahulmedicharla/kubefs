@@ -80,6 +80,7 @@ helmify(){
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#None#" \
             -i -e "s#{{ENTRY}}#$entry#" \
+            -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
 
         for env in "${env_vars[@]}"; do
@@ -90,19 +91,25 @@ helmify(){
 
     helmify_frontend(){
         NAME=$1
+        hostname=$(yq e '.project.hostname' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/frontend/*" -d /tmp
-        cp -r /tmp/kubefs-main/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-main
+        if [ "$hostname" == "null" ]; then
+            hostname=""
+        fi
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/multi-ingress.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-multi-ingress/scripts/templates/deployment/frontend/*" -d /tmp
+        cp -r /tmp/kubefs-multi-ingress/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-multi-ingress
+
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/multi-ingress/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
             -i -e "s#{{IMAGE}}#${docker_repo}#" \
             -i -e "s#{{PORT}}#80#" \
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
             -i -e "s#{{ENTRY}}#$entry#" \
+            -i -e "s#{{HOST}}#$hostname#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
@@ -125,6 +132,7 @@ helmify(){
             -i -e "s#{{TAG}}#latest#" \
             -i -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
             -i -e "s#{{ENTRY}}#$entry#" \
+            -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
