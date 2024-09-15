@@ -377,11 +377,13 @@ deploy_unique(){
                         sleep 2
                         kubectl get pods -n ingress-nginx | grep -q 1/1
                     done
+                else
+                    kubectl config use-context minikube
                 fi
 
                 helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
 
-                print_warning "Deployed $NAME... Use 'minikube tunnel' to port-forward the service to localhost"
+                print_warning "Deployed $NAME... Use 'minikube tunnel' or 'minikube service -n $NAME $NAME-deployment --url' to port-forward the service to localhost"
 
                 if [ $? -eq 1 ]; then
                     print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."

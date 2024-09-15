@@ -163,7 +163,7 @@ download_dependencies(){
         fi
     fi
 
-    if !(command -v azure-cli &> /dev/null); then
+    if !(command -v az &> /dev/null); then
         echo "Downloading azure-cli..."
         brew install azure-cli
 
