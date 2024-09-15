@@ -233,6 +233,7 @@ deploy_azure(){
                 print_warning "Waiting for provider to finish registration..."
                 sleep 2
             done
+            print_success "Azure Compute provider registered successfully"
         fi
 
         if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.ContainerService; then
@@ -242,6 +243,7 @@ deploy_azure(){
                 print_warning "Waiting for provider to finish registration..."
                 sleep 2
             done
+            print_success "Azure ContainerService provider registered successfully"
         fi
 
         if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Network; then
@@ -251,6 +253,7 @@ deploy_azure(){
                 print_warning "Waiting for provider to finish registration..."
                 sleep 2
             done
+            print_success "Azure Network provider registered successfully"
         fi
 
         if ! az provider list --query "[?registrationState=='Registered']" --output table | grep -q Microsoft.Storage; then
@@ -260,6 +263,7 @@ deploy_azure(){
                 print_warning "Waiting for provider to finish registration..."
                 sleep 2
             done
+            print_success "Azure Storage provider registered successfully"
         fi
 
         if az group exists --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" | grep -q "false"; then
@@ -272,6 +276,7 @@ deploy_azure(){
             fi
 
             az group wait --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --created
+            print_success "Resource group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) created successfully"
         fi
 
         if ! az aks list -o table | grep -q $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml); then
@@ -282,6 +287,9 @@ deploy_azure(){
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
             fi
+
+            az aks wait --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --created
+            print_success "AKS cluster $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) created successfully"
         fi
 
         if az aks show --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --query "powerState.code" -o tsv | grep -q "Stopped" ; then
@@ -310,6 +318,7 @@ deploy_azure(){
                 --namespace $NAMESPACE \
                 --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
                 --set controller.service.externalTrafficPolicy=Local
+            kubectl wait --for=condition=available --timeout=5m deployment/ingress-nginx-controller -n ingress-nginx
         fi
 
         helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
