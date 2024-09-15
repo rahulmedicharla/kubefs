@@ -44,13 +44,6 @@ run_all(){
     manifest_data=$(yq e '.resources[] | .name + ":" + .type' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
-    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
-
-    for env_var in "${env_vars[@]}"; do
-        export $env_var
-    done
-
     exit_flag=0
 
     for project_info in "${manifest_data[@]}"; do
@@ -100,6 +93,36 @@ run_unique(){
     type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
     local_run=$(yq e '.up.local' $CURRENT_DIR/$NAME/scaffold.yaml)
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
+    framework=$(yq e '.project.framework' $CURRENT_DIR/$NAME/scaffold.yaml)
+
+    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+
+
+    (cd $CURRENT_DIR/$name && rm -rf .env.local && touch .env.local)
+    for env_var in "${env_vars[@]}"; do
+        case $type in
+            "api")
+                echo $env_var >> $CURRENT_DIR/$name/".env.local"
+                ;;
+            "frontend")
+                case $framework in
+                    "next")
+                        echo NEXT_PUBLIC_$env_var >> $CURRENT_DIR/$name/".env.local"
+                        ;;
+                    "vue")
+                        echo VUE_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
+                        ;;
+                    *)
+                        echo $env_var >> $CURRENT_DIR/$name/".env.local"
+                        ;;
+                    esac
+                ;;
+            *)
+                ;;
+        esac
+    done
+    source $CURRENT_DIR/$name/".env.local"
 
     if [ "${opts["--platform"]}" == "docker" ]; then
         
@@ -141,7 +164,7 @@ run_helper(){
 
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$name/scaffold.yaml)
     local_run=$(yq e '.up.local' $CURRENT_DIR/$name/scaffold.yaml)
-
+    
     if [ "${opts["--platform"]}" == "docker" ] && [ "$docker_run" == "null" ]; then
         print_warning "Docker image not built for $NAME, please build using 'kubefs compile'. "
         return 1
@@ -151,13 +174,6 @@ run_helper(){
         print_error "No local_run specified for $name."
         return 0
     fi
-
-    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
-    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
-
-    for env_var in "${env_vars[@]}"; do
-        export $env_var
-    done
 
     run_unique $name "${opts[@]}"
 
