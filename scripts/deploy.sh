@@ -271,7 +271,7 @@ deploy_google(){
         
         NAMESPACE=metrics-server
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
-            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml     
             kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
         fi  
   
@@ -418,7 +418,6 @@ deploy_azure(){
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
             kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
             kubectl wait --for=condition=available --timeout=5m deployment/metrics-server         
-            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
         fi  
   
         NAMESPACE=ingress-nginx
@@ -503,7 +502,7 @@ deploy_aws(){
         
         NAMESPACE=metrics-server
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
-            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml       
             kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
         fi  
   

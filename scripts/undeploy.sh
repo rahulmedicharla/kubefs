@@ -58,7 +58,7 @@ stop(){
             fi 
         ;;
         "google") 
-            print_error "Google Cloud does not support stopping the cluster. Please stop the cluster manually."
+            print_error "Google Cloud autopilot cluster does not support stopping the cluster. Please stop the cluster manually."
             ;;
         *)
             minikube stop
