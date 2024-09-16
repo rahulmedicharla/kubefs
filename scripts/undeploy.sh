@@ -9,8 +9,8 @@ default_helper() {
         kubefs undeploy --help - display this help message
 
         Args:
-            --target | -t <local|EKS|azure|google> - specify the deployment target for which cluster (default is local)
-            --close | -c - stop cluster after undeploying components
+            --target | -t <local|aws|azure|google> - specify the deployment target for which cluster (default is local)
+            --close | -c - stop cluster after Undeploying components
     "
 }
 
@@ -23,7 +23,7 @@ parse_optional_params(){
     while [ $# -gt 0 ]; do
         case $1 in
             --target | -t)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "google" ]; then
+                if [ "$2" == "local" ] || [ "$2" == "aws" ] || [ "$2" == "azure" ] || [ "$2" == "google" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
@@ -41,7 +41,15 @@ parse_optional_params(){
 stop(){
     TARGET=$1
     case $TARGET in
-        # "EKS") ;;
+        "aws")
+            for nodegroup in $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --output json | jq -r '.[].Name'); do
+                eksctl scale nodegroup --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --nodes 0 --name $nodegroup --nodes-min 0
+            done 
+            if [ $? -eq 1 ]; then
+                print_error "Error occured stopping the cluster. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+            ;;
         "azure")
             az aks stop --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)
             if [ $? -eq 1 ]; then
@@ -76,7 +84,7 @@ undeploy_all(){
         undeploy_unique $name "${opts[@]}"
 
         if [ $? -eq 1 ]; then
-            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
             return 0
         fi
     done
@@ -101,7 +109,7 @@ undeploy_helper(){
     undeploy_unique $NAME "${opts[@]}"
 
     if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 0
     fi
 
@@ -127,13 +135,13 @@ undeploy_azure(){
 
     az aks get-credentials --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)
     if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 1
     fi
 
     helm uninstall $NAME     
     if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 1
     fi
 
@@ -152,18 +160,44 @@ undeploy_google(){
 
     gcloud container clusters get-credentials $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
     if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 1
     fi
 
     helm uninstall $NAME     
     if [ $? -eq 1 ]; then
-        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
         return 1
     fi
 
     print_success "$NAME undeployed successfully"
     return 0
+}
+
+undeploy_aws(){
+    NAME=$1
+    echo "undeploying $NAME from EKS..."
+
+    if ! aws sts get-caller-identity > /dev/null 2>&1; then
+        print_warning "AWS account not logged in. Please login using 'kubefs config aws'"
+        return 1
+    fi
+
+    eksctl utils write-kubeconfig --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml)
+    if [ $? -eq 1 ]; then
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+
+    helm uninstall $NAME
+    if [ $? -eq 1 ]; then
+        print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+
+    print_success "$NAME undeployed successfully"
+    return 0
+
 }
 
 undeploy_unique(){
@@ -185,19 +219,19 @@ undeploy_unique(){
     echo "Undeploying $NAME ..."
     
     case ${opts["--target"]} in
-        # "EKS") deploy_eks $NAME;;
+        "aws") undeploy_aws $NAME;;
         "azure") undeploy_azure $NAME;;
         "google") undeploy_google $NAME;;
         *)
             kubectl config use-context minikube
             if [ $? -eq 1 ]; then
-                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
             fi
 
             helm uninstall $NAME 
             if [ $? -eq 1 ]; then
-                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                print_error "Error occured undeploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
             fi
             ;;

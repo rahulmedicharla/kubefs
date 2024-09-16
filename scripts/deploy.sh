@@ -9,7 +9,7 @@ default_helper() {
         kubefs deploy --help - display this help message
 
         Args:
-            --target | -t <local|EKS|azure|google> - specify the deployment target for which cluster (default is local)
+            --target | -t <local|aws|azure|google> - specify the deployment target for which cluster (default is local)
             --no-deploy | -nd: Don't deploy the helm chart, only create the helm chart
             --no-helmify | -nh: Don't create the helm chart
     "
@@ -25,7 +25,7 @@ parse_optional_params(){
     while [ $# -gt 0 ]; do
         case $1 in
             --target| -t)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "google" ]; then
+                if [ "$2" == "local" ] || [ "$2" == "aws" ] || [ "$2" == "azure" ] || [ "$2" == "google" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
@@ -261,8 +261,19 @@ deploy_google(){
             return 1
         fi
 
+        while [ $(kubectl get nodes | grep -c NotReady) -gt 0 ]; do
+            print_warning "Waiting for GKE cluster to finish setup..."
+            sleep 2
+        done
+
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
         helm repo update
+        
+        NAMESPACE=metrics-server
+        if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
+        fi  
   
         NAMESPACE=ingress-nginx
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
@@ -282,7 +293,7 @@ deploy_google(){
         fi
     fi
 
-
+    return 0
 }
 
 deploy_azure(){
@@ -376,7 +387,6 @@ deploy_azure(){
                 return 1
             fi
 
-            az aks wait --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --created
             print_success "AKS cluster $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) created successfully"
         fi
 
@@ -396,8 +406,106 @@ deploy_azure(){
             return 1
         fi
 
+        while [ $(kubectl get nodes | grep -c NotReady) -gt 0 ]; do
+            print_warning "Waiting for cluster to finish setup..."
+            sleep 2
+        done
+
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
         helm repo update
+        
+        NAMESPACE=metrics-server
+        if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server         
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
+        fi  
+  
+        NAMESPACE=ingress-nginx
+        if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
+            helm install ingress-nginx ingress-nginx/ingress-nginx \
+                --create-namespace \
+                --namespace $NAMESPACE \
+                --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
+                --set controller.service.externalTrafficPolicy=Local
+            kubectl wait --for=condition=available --timeout=5m deployment/ingress-nginx-controller -n ingress-nginx
+        fi
+
+        helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+
+    fi
+
+    print_success "$NAME deployed successfully"
+    return 0
+}
+
+deploy_aws(){
+    NAME=$1
+    CURRENT_DIR=`pwd`
+
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
+        print_error "$NAME is not a valid resource"
+        default_helper
+        return 1
+    fi
+
+    echo "Deploying $NAME ..."
+    if [ "${opts["--no-helmify"]}" == false ]; then
+        rm -rf $CURRENT_DIR/$NAME/deploy
+        
+        helmify $NAME
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured helmifying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+    if [ "${opts["--no-deploy"]}" == false ]; then
+
+        if ! aws sts get-caller-identity > /dev/null 2>&1; then
+            print_warning "AWS account not logged in. Please login using 'kubefs config aws'"
+            return 1
+        fi
+
+        if ! eksctl get cluster --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) | grep -q $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml); then
+            print_warning "EKS cluster does not exist. Creating EKS cluster..."
+            eksctl create cluster --name $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --node-type t2.micro --nodes-min 1 --nodes-max 5 --managed
+
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+            print_success "EKS cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) created successfully"
+        fi
+
+        eksctl utils write-kubeconfig --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml)
+
+        if [ $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) -o json | jq -r '.[].DesiredCapacity') == 0 ]; then
+            print_warning "EKS not running. Starting EKS cluster..."
+            for nodegroup in $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --output json | jq -r '.[].Name'); do
+                eksctl scale nodegroup --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --name $nodegroup --nodes-min 1 --nodes-max 5
+            done
+        fi
+
+        while [ $(kubectl get nodes | grep -c NotReady) -gt 0 ]; do
+            print_warning "Waiting for EKS cluster to finish setup..."
+            sleep 2
+        done
+
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+        
+        NAMESPACE=metrics-server
+        if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
+        fi  
   
         NAMESPACE=ingress-nginx
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
@@ -441,14 +549,23 @@ deploy_unique(){
     echo "Deploying $NAME to ${opts["--target"]}..."
 
     case ${opts["--target"]} in
-        # "EKS") deploy_eks $NAME;;
+        "aws") deploy_aws $NAME
+            if [ $? -eq 1 ]; then
+                return 1
+            fi
+            ;;
         "azure")
             deploy_azure $NAME
             if [ $? -eq 1 ]; then
                 return 1
             fi 
             ;;
-        "google") deploy_google $NAME;;
+        "google") 
+            deploy_google $NAME
+            if [ $? -eq 1 ]; then
+                return 1
+            fi
+            ;;
         *)
 
             if [ "${opts["--no-helmify"]}" == false ]; then
@@ -487,6 +604,7 @@ deploy_unique(){
                     return 1
                 fi
             fi
+            return 0
             ;;
     esac
 
