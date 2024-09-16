@@ -5,6 +5,7 @@ default_helper() {
 
     Usage: kubefs config <COMMAND>
         kubefs config azure - manage azure configurations
+        kubefs config aws - manage aws configurations
         kubefs config docker - manage docker configurations
         kubefs config google - manage google configurations
         kubefs config list - list all configuration data
@@ -39,6 +40,8 @@ list_configurations(){
     az account list
     echo "Google accounts:"
     gcloud auth list --format="value(account)"
+    echo "AWS accounts:"
+    aws sts get-caller-identity
 }
 
 validate_gpg_key(){
@@ -92,6 +95,37 @@ azure_config(){
     yq e -i ".azure.location = \"$location\"" $CURRENT_DIR/manifest.yaml
     yq e -i ".azure.resource_group = \"$resource_group\"" $CURRENT_DIR/manifest.yaml
     yq e -i ".azure.cluster_name = \"$cluster_name\"" $CURRENT_DIR/manifest.yaml
+
+    return 0
+}
+
+aws_config(){
+    echo "Configuring AWS configurations..."
+    CURRENT_DIR=$(pwd)
+    
+    eval $(parse_optional_params $@)
+    if [ ${opts["--remove"]} = true ]; then
+        print_warning "Logging out of AWS account, delete resources & groups at https://console.aws.amazon.com manually"
+        rm -rf ~/.aws/config && rm -rf ~/.aws/credentials
+        if [ $? -eq 1 ]; then
+            print_error "AWS logout failed. Please try again or create account at https://console.aws.amazon.com"
+            return 1
+        fi
+        yq eval 'del(.aws)' -i $CURRENT_DIR/manifest.yaml
+        return 0
+    fi
+
+    aws configure
+    if [ $? -eq 1 ]; then
+        print_error "AWS login failed. Please try again or create account at https://console.aws.amazon.com"
+        return 1
+    fi
+
+    echo "Enter cluster name: "
+    read cluster_name
+
+    yq e -i ".aws.region = \"$(aws configure get region)\"" $CURRENT_DIR/manifest.yaml
+    yq e -i ".aws.cluster_name = \"$cluster_name\"" $CURRENT_DIR/manifest.yaml
 
     return 0
 }
@@ -219,6 +253,7 @@ main(){
 
     case $COMMAND in
         "azure") azure_config $@;;
+        "aws") aws_config $@;;
         "docker") docker_config $@;;
         "google") google_config $@;;
         "list") list_configurations;;

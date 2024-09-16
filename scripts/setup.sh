@@ -185,6 +185,25 @@ download_dependencies(){
             return 1
         fi
     fi
+
+    if !(command -v aws &> /dev/null); then
+        echo "Downloading aws-cli..."
+        brew install awscli
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install aws-cli. Exiting..."
+            return 1
+        fi
+    fi
+
+    if !(command -v eksctl &> /dev/null); then
+        echo "Downloading eksctl..."
+        brew install eksctl
+        if [ $? -ne 0 ]; then
+            echo "Failed to install eksctl. Exiting..."
+            return 1
+        fi
+    fi
 }
 
 init_project() {
