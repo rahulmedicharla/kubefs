@@ -58,6 +58,7 @@ download_dependencies(){
 
         minikube start
         minikube addons enable ingress
+        minikube addons enable metrics-server
         kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/master/deploy/local-path-storage.yaml
         minikube stop
     fi
