@@ -9,7 +9,7 @@ default_helper() {
         kubefs deploy --help - display this help message
 
         Args:
-            --target | -t <local|EKS|azure|GCP> - specify the deployment target for which cluster (default is local)
+            --target | -t <local|EKS|azure|google> - specify the deployment target for which cluster (default is local)
             --no-deploy | -nd: Don't deploy the helm chart, only create the helm chart
             --no-helmify | -nh: Don't create the helm chart
     "
@@ -25,7 +25,7 @@ parse_optional_params(){
     while [ $# -gt 0 ]; do
         case $1 in
             --target| -t)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "GCP" ]; then
+                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "google" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
@@ -197,6 +197,94 @@ deploy_helper(){
     return 0
 }
 
+deploy_google(){
+    NAME=$1
+    CURRENT_DIR=`pwd`
+
+    if [ ! -f "$CURRENT_DIR/$NAME/scaffold.yaml" ]; then
+        print_error "$NAME is not a valid resource"
+        default_helper
+        return 1
+    fi
+
+    echo "Deploying $NAME ..."
+    if [ "${opts["--no-helmify"]}" == false ]; then
+        rm -rf $CURRENT_DIR/$NAME/deploy
+        
+        helmify $NAME
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured helmifying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+    if [ "${opts["--no-deploy"]}" == false ]; then
+        if ! gcloud auth list --format="value(account)" | grep -q "@"; then
+            print_warning "Google Cloud account not logged in. Please login using 'gcloud auth login'"
+            return 1
+        fi
+
+        if ! gcloud services list --enabled --format="value(config.name)" | grep -q "container.googleapis.com"; then
+            print_warning "GKE API not enabled. Enabling GKE API..."
+            gcloud services enable container.googleapis.com
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+            print_success "GKE API enabled successfully"
+        fi
+
+        if ! gcloud container clusters list --format="value(name)" | grep -q $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml); then
+            print_warning "GKE cluster does not exist. Creating GKE cluster..."
+            gcloud container clusters create-auto $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --region=$(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+            print_success "GKE cluster $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) created successfully"
+        fi
+
+        if ! gcloud components list --format="value(name)"| grep -q "gke-gcloud-auth-plugin"; then
+            print_warning "GKE gcloud auth plugin not installed. Installing GKE cloud auth plugin..."
+            gcloud components install gke-gcloud-auth-plugin
+            if [ $? -eq 1 ]; then
+                print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+                return 1
+            fi
+            print_success "GKE cloud auth plugin installed successfully"
+        fi
+
+        gcloud container clusters get-credentials $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+
+        helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+        helm repo update
+  
+        NAMESPACE=ingress-nginx
+        if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
+            helm install ingress-nginx ingress-nginx/ingress-nginx \
+                --create-namespace \
+                --namespace $NAMESPACE \
+                --set controller.service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-health-probe-request-path"=/healthz \
+                --set controller.service.externalTrafficPolicy=Local
+            kubectl wait --for=condition=available --timeout=5m deployment/ingress-nginx-controller -n ingress-nginx
+        fi
+
+        helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
+
+        if [ $? -eq 1 ]; then
+            print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+            return 1
+        fi
+    fi
+
+
+}
+
 deploy_azure(){
     NAME=$1
     CURRENT_DIR=`pwd`
@@ -268,7 +356,7 @@ deploy_azure(){
 
         if az group exists --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" | grep -q "false"; then
             print_warning "Resource group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) does not exist. Creating resource group..."
-            az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --location "$(yq e '.azure.location' $CURRENT_DIR/manifest.yaml)"
+            az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --region "$(yq e '.azure.region' $CURRENT_DIR/manifest.yaml)"
 
             if [ $? -eq 1 ]; then
                 print_error "Error occurred deploying $NAME. Please try again or use 'kubefs --help' for more information."
@@ -360,7 +448,7 @@ deploy_unique(){
                 return 1
             fi 
             ;;
-        # "GCP") deploy_gcp $NAME;;
+        "google") deploy_google $NAME;;
         *)
 
             if [ "${opts["--no-helmify"]}" == false ]; then

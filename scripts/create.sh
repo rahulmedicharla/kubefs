@@ -198,7 +198,7 @@ create_db(){
         return 1
     fi
 
-    local_host=$(hostname -I | awk '{print $1}')
+    local_host=localhost
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
 
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
@@ -229,7 +229,7 @@ create_api() {
     fi
 
     
-    local_host=$(hostname -I | awk '{print $1}')
+    local_host=localhost
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
@@ -325,7 +325,7 @@ create_frontend(){
         return 1
     fi
     
-    local_host=$(hostname -I | awk '{print $1}')
+    local_host=localhost
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
