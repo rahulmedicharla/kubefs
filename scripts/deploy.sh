@@ -261,16 +261,18 @@ deploy_google(){
             return 1
         fi
 
+        while [ $(kubectl get nodes | grep -c NotReady) -gt 0 ]; do
+            print_warning "Waiting for GKE cluster to finish setup..."
+            sleep 2
+        done
+
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-        helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo update
         
         NAMESPACE=metrics-server
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
-            helm install metrics-server bitnami/metrics-server \
-                --create-namespace \
-                --namespace $NAMESPACE
-            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server -n metrics-server
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
         fi  
   
         NAMESPACE=ingress-nginx
@@ -291,7 +293,7 @@ deploy_google(){
         fi
     fi
 
-
+    return 0
 }
 
 deploy_azure(){
@@ -385,7 +387,6 @@ deploy_azure(){
                 return 1
             fi
 
-            az aks wait --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --created
             print_success "AKS cluster $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) created successfully"
         fi
 
@@ -405,16 +406,18 @@ deploy_azure(){
             return 1
         fi
 
+        while [ $(kubectl get nodes | grep -c NotReady) -gt 0 ]; do
+            print_warning "Waiting for cluster to finish setup..."
+            sleep 2
+        done
+
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-        helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo update
         
         NAMESPACE=metrics-server
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
-            helm install metrics-server bitnami/metrics-server \
-                --create-namespace \
-                --namespace $NAMESPACE
-            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server -n metrics-server
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
         fi  
   
         NAMESPACE=ingress-nginx
@@ -471,7 +474,7 @@ deploy_aws(){
 
         if ! eksctl get cluster --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) | grep -q $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml); then
             print_warning "EKS cluster does not exist. Creating EKS cluster..."
-            eksctl create cluster --name $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --node-type t2.micro --nodes 2 --nodes-min 1 --nodes-max 5 --managed
+            eksctl create cluster --name $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --node-type t2.micro --nodes-min 1 --nodes-max 5 --managed
 
             if [ $? -eq 1 ]; then
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
@@ -485,25 +488,22 @@ deploy_aws(){
         if [ $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) -o json | jq -r '.[].DesiredCapacity') == 0 ]; then
             print_warning "EKS not running. Starting EKS cluster..."
             for nodegroup in $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --output json | jq -r '.[].Name'); do
-                eksctl scale nodegroup --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --nodes 2 --name $nodegroup --nodes-min 1 --nodes-max 5
+                eksctl scale nodegroup --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --name $nodegroup --nodes-min 1 --nodes-max 5
             done
         fi
 
-        while [ $(kubectl get nodes | grep -c Ready) -lt 2 ]; do
+        while [ $(kubectl get nodes | grep -c NotReady) -gt 0 ]; do
             print_warning "Waiting for EKS cluster to finish setup..."
             sleep 2
         done
 
         helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-        helm repo add bitnami https://charts.bitnami.com/bitnami
         helm repo update
         
         NAMESPACE=metrics-server
         if ! kubectl get namespace $NAMESPACE > /dev/null 2>&1; then
-            helm install metrics-server bitnami/metrics-server \
-                --create-namespace \
-                --namespace $NAMESPACE
-            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server -n metrics-server
+            kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml -n $NAMESPACE         
+            kubectl wait --for=condition=available --timeout=5m deployment/metrics-server
         fi  
   
         NAMESPACE=ingress-nginx
@@ -559,7 +559,12 @@ deploy_unique(){
                 return 1
             fi 
             ;;
-        "google") deploy_google $NAME;;
+        "google") 
+            deploy_google $NAME
+            if [ $? -eq 1 ]; then
+                return 1
+            fi
+            ;;
         *)
 
             if [ "${opts["--no-helmify"]}" == false ]; then
@@ -598,6 +603,7 @@ deploy_unique(){
                     return 1
                 fi
             fi
+            return 0
             ;;
     esac
 
