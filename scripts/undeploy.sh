@@ -9,7 +9,7 @@ default_helper() {
         kubefs undeploy --help - display this help message
 
         Args:
-            --target | -t <local|EKS|azure|GCP> - specify the deployment target for which cluster (default is local)
+            --target | -t <local|EKS|azure|google> - specify the deployment target for which cluster (default is local)
             --close | -c - stop cluster after undeploying components
     "
 }
@@ -23,7 +23,7 @@ parse_optional_params(){
     while [ $# -gt 0 ]; do
         case $1 in
             --target | -t)
-                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "GCP" ]; then
+                if [ "$2" == "local" ] || [ "$2" == "EKS" ] || [ "$2" == "azure" ] || [ "$2" == "google" ]; then
                     opts["--target"]=$2
                     shift
                 fi 
@@ -49,7 +49,9 @@ stop(){
                 return 1
             fi 
         ;;
-        # "GCP") ;;
+        "google") 
+            print_error "Google Cloud does not support stopping the cluster. Please stop the cluster manually."
+            ;;
         *)
             minikube stop
             if [ $? -eq 1 ]; then
@@ -139,6 +141,31 @@ undeploy_azure(){
     return 0
 }
 
+undeploy_google(){
+    NAME=$1
+    echo "Undeploying $NAME from Google..."
+
+    if ! gcloud auth list --format="value(account)" | grep -q "@"; then
+        print_warning "Google Cloud account not logged in. Please login using 'gcloud auth login'"
+        return 1
+    fi
+
+    gcloud container clusters get-credentials $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
+    if [ $? -eq 1 ]; then
+        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+
+    helm uninstall $NAME     
+    if [ $? -eq 1 ]; then
+        print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
+        return 1
+    fi
+
+    print_success "$NAME undeployed successfully"
+    return 0
+}
+
 undeploy_unique(){
     NAME=$1
     opts=$2
@@ -160,7 +187,7 @@ undeploy_unique(){
     case ${opts["--target"]} in
         # "EKS") deploy_eks $NAME;;
         "azure") undeploy_azure $NAME;;
-        # "GCP") deploy_gcp $NAME;;
+        "google") undeploy_google $NAME;;
         *)
             kubectl config use-context minikube
             if [ $? -eq 1 ]; then

@@ -4,9 +4,10 @@ default_helper() {
     kubefs config - configure kubefs environment and auth configurations
 
     Usage: kubefs config <COMMAND>
-        kubefs config list - list all configuration data
         kubefs config azure - manage azure configurations
         kubefs config docker - manage docker configurations
+        kubefs config google - manage google configurations
+        kubefs config list - list all configuration data
         kubefs config --help - display this help message
 
         Args:
@@ -36,6 +37,8 @@ list_configurations(){
     pass show kubefs/config/docker
     echo "Azure accounts":
     az account list
+    echo "Google accounts:"
+    gcloud auth list --format="value(account)"
 }
 
 validate_gpg_key(){
@@ -57,23 +60,12 @@ azure_config(){
     
     eval $(parse_optional_params $@)
     if [ ${opts["--remove"]} = true ]; then
-        if az aks list | grep -q $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml); then
-            az aks delete --resource-group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --name $(yq e '.azure.cluster_name' $CURRENT_DIR/manifest.yaml) --yes
-            if [ $? -eq 1 ]; then
-                print_error "Error occured deleting Azure resources. Please try again or use 'kubefs --help' for more information."
-                return 1
-            fi
-        fi
-
-        if az group list | grep -q $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml); then
-            az group delete --name $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) --yes
-            if [ $? -eq 1 ]; then
-                print_error "Error occured deleting Azure resources. Please try again or use 'kubefs --help' for more information."
-                return 1
-            fi
-        fi
-        
+        print_warning "Logging out of Azure account, delete resources & groups at https://portal.azure.com manually"
         az logout
+        if [ $? -eq 1 ]; then
+            print_error "Azure logout failed. Please try again or create account at https://portal.azure.com"
+            return 1
+        fi
         yq eval 'del(.azure)' -i $CURRENT_DIR/manifest.yaml
         return 0
     fi
@@ -100,6 +92,68 @@ azure_config(){
     yq e -i ".azure.location = \"$location\"" $CURRENT_DIR/manifest.yaml
     yq e -i ".azure.resource_group = \"$resource_group\"" $CURRENT_DIR/manifest.yaml
     yq e -i ".azure.cluster_name = \"$cluster_name\"" $CURRENT_DIR/manifest.yaml
+
+    return 0
+}
+
+google_config(){
+    echo "Configuring Google configurations..."
+    CURRENT_DIR=$(pwd)
+    
+    eval $(parse_optional_params $@)
+    if [ ${opts["--remove"]} = true ]; then   
+        print_warning "Logging out of Google account, delete resources & groups at https://console.cloud.google.com manually"
+        gcloud auth revoke
+        if [ $? -eq 1 ]; then
+            print_error "Google logout failed. Please try again or create account at https://console.cloud.google.com"
+            return 1
+        fi
+        yq eval 'del(.google)' -i $CURRENT_DIR/manifest.yaml
+        return 0
+    fi
+
+    gcloud auth login
+    if [ $? -eq 1 ]; then
+        print_error "Google login failed. Please try again or create account at https://console.cloud.google.com"
+        return 1
+    fi
+
+    echo "Enter project ID to use/create: "
+    read project_id
+    echo "Enter region to use: "
+    read region
+    echo "Enter cluster name: "
+    read cluster_name
+
+    
+    if ! gcloud projects list --format="value(projectId)" | grep -q "^$project_id$"; then
+        echo "Creating project $project_id..."
+        gcloud projects create $project_id
+        if [ $? -ne 0 ]; then
+            print_error "Failed to create project. Please try again."
+            return 1
+        fi
+    fi
+    
+    gcloud config set project $project_id 2>/dev/null
+
+    if ! gcloud services list --enabled --format="value(config.name)" | grep -q "compute.googleapis.com"; then
+        echo "Compute Engine API is not enabled. Enabling it now..."
+        gcloud services enable compute.googleapis.com
+        if [ $? -ne 0 ]; then
+            print_error "Failed to enable Compute Engine API. Please try again."
+            return 1
+        fi
+    fi
+
+    if ! gcloud compute regions list --format="value(name)" | grep -q "^$region$"; then
+        print_error "Invalid region: $region. Please enter a valid Google Cloud region."
+        return 1
+    fi
+
+    yq e -i ".google.project_id = \"$(gcloud config get-value project)\"" $CURRENT_DIR/manifest.yaml
+    yq e -i ".google.region = \"$region\"" $CURRENT_DIR/manifest.yaml
+    yq e -i ".google.cluster_name = \"$cluster_name\"" $CURRENT_DIR/manifest.yaml
 
     return 0
 }
@@ -165,8 +219,9 @@ main(){
 
     case $COMMAND in
         "azure") azure_config $@;;
-        "list") list_configurations;;
         "docker") docker_config $@;;
+        "google") google_config $@;;
+        "list") list_configurations;;
         "--help") default_helper;;
         *) default_helper;;
     esac

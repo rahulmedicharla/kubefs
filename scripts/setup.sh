@@ -172,6 +172,19 @@ download_dependencies(){
             return 1
         fi
     fi
+
+    if !(command -v gcloud &> /dev/null); then
+        echo "Downloading gcloud..."
+        (cd ~ && curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-cli-linux-x86_64.tar.gz;
+        tar -xf google-cloud-cli-linux-x86_64.tar.gz;
+        sh ./google-cloud-sdk/install.sh;
+        )
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install gcloud. Exiting..."
+            return 1
+        fi
+    fi
 }
 
 init_project() {
