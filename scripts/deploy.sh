@@ -70,10 +70,10 @@ helmify(){
     helmify_database(){
         NAME=$1
 
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/mongo.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-mongo/scripts/templates/deployment/db/*" -d /tmp
-        cp -r /tmp/kubefs-mongo/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-mongo
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/db/*" -d /tmp
+        cp -r /tmp/kubefs-main/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-main
 
         wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         case $framework in

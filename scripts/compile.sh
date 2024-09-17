@@ -226,7 +226,7 @@ build(){
         "db")
             case $framework in 
                 "mongo")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/mongo/scripts/templates/local-db/template-mongo-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-mongo-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
                     sed -i -e "s/{{PORT}}/${port}/" \
                         -i -e "s/{{ENTRY}}/${entry}/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
