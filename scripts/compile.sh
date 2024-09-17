@@ -224,27 +224,45 @@ build(){
             done    
             ;;
         "db")
-            host=$(hostname -I | awk '{print $1}')
+            case $framework in 
+                "mongo")
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-mongo-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{ENTRY}}/${entry}/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
 
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-db-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-            sed -i -e "s/{{HOSTIP}}/${host}/" \
-                -i -e "s/{{HOST_PORT}}/${port}/" \
-                -i -e "s/{{PORT}}/${port}/" \
-                -i -e "s/{{ENTRY}}/${entry}/" \
-                "$CURRENT_DIR/$NAME/docker-compose.yaml"
+                    if [ "$docker_run" == "null" ]; then
+                        yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                        yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                        yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rm $NAME-setup-1 > /dev/null 2>&1", "docker volume rm ${NAME}_mongo_data > /dev/null 2>&1", "docker network rm ${NAME}_mongo_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                    fi
 
-            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
-            
-            if [ "$docker_run" == "null" ]; then
-                yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
-                yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
-                yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rm $NAME-setup-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker network rm ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
-            fi
+                    for env in "${env_vars[@]}"; do
+                        yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                    done
+                    ;;
+                *)
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-db-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    sed -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{PORT}}/${port}/" \
+                        -i -e "s/{{ENTRY}}/${entry}/" \
+                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
 
-            for env in "${env_vars[@]}"; do
-                yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
-            done
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+                    
+                    if [ "$docker_run" == "null" ]; then
+                        yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                        yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                        yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rm $NAME-setup-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker network rm ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                    fi
 
+                    for env in "${env_vars[@]}"; do
+                        yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                    done
+                    ;;
+            esac
             print_success "$NAME prepared successfully"
             return 0;;
         *) default_helper;;

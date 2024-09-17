@@ -104,6 +104,17 @@ download_dependencies(){
         fi
     fi
 
+    if !(command -v mongosh &> /dev/null); then
+        echo "Downloading mongosh..."
+        brew tap mongodb/brew
+        brew install mongosh
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install mongosh. Exiting..."
+            return 1
+        fi
+    fi
+
     if !(command -v jq &> /dev/null); then
         echo "Downloading jq..."
         brew install jq
