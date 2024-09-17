@@ -138,10 +138,10 @@ remove_unique(){
         for cmd in "${remove_remote[@]}"; do
             eval "$cmd"
 
-            # if [ $? -eq 1 ]; then
-            #     print_error "Error occurred executing command: $cmd. Please try again."
-            #     return 1
-            # fi
+            if [ $? -eq 1 ]; then
+                print_error "Error occurred executing command: $cmd. Please try again."
+                return 1
+            fi
         done
 
         if [ $? -eq 1 ]; then

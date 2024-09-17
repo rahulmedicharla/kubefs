@@ -201,7 +201,7 @@ docker_config(){
         return 0
     fi
 
-    echo "Please enter Docker ID or email:"
+    echo "Please enter Docker username:"
     read username
 
     if [ -z $username ]; then

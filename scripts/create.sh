@@ -12,7 +12,7 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the framework to use for frontend resource [express | next | vue] default: express
+            : specify the framework to use for frontend resource [next | vue | angular] default: next
             : specify the framework to use for api resource [express | go | fast] default: express 
             : specify the framework to use for db resource [mongo | cassandra] default: cassandra
     "
@@ -327,7 +327,7 @@ create_frontend(){
 
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "3000" "index" "express" $@)
+    eval $(parse_optional_params "3000" "index" "next" $@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
@@ -339,23 +339,32 @@ create_frontend(){
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
-    if [ ${opts["--framework"]} == "next" ]; then
-        mkdir $CURRENT_DIR/$NAME
-        (cd $CURRENT_DIR/$NAME && npx create-next-app --ts . )
-
+    if [ ${opts["--framework"]} == "angular" ]; then
+        npm i -g @angular/cli
         if [ $? -ne 0 ]; then
             return 1
         fi
 
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.start = "export PORT='80' && next start"' package.json > tmp.json && mv tmp.json package.json)
+        ng new $NAME --defaults --skip-git
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+
+        (cd $CURRENT_DIR/$NAME && npm i @ngx-env/builder)
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
+
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.start = "ng serve --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"main.ts\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"angular\""  $SCAFFOLD -i )
         (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
-        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run start\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "main.ts" "${opts["--port"]}" "npm run start" frontend "$local_host" "${cluster_host}" $sanitized_name
+
     elif [ ${opts["--framework"]} == "vue" ]; then
         npm create vue@latest $NAME
 
@@ -364,7 +373,7 @@ create_frontend(){
         fi
 
         (cd $CURRENT_DIR/$NAME && npm i)
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'" | .scripts.preview = "vite preview --port 80 --host 0.0.0.0"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.vue\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"vue\""  $SCAFFOLD -i )
@@ -375,35 +384,23 @@ create_frontend(){
         append_to_manifest $NAME "App.vue" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
     else
         mkdir $CURRENT_DIR/$NAME
-        (cd $CURRENT_DIR/$NAME && npm init -y)        
-        if [ $? -ne 0 ]; then
-            return 1
-        fi
-
-        (cd $CURRENT_DIR/$NAME && jq '.main = "'${opts["--entry"]}'" | .type = "module"' package.json > tmp.json && mv tmp.json package.json)
-        (cd $CURRENT_DIR/$NAME && npm install express nodemon express-handlebars dotenv )
+        (cd $CURRENT_DIR/$NAME && npx create-next-app --ts . )
 
         if [ $? -ne 0 ]; then
             return 1
         fi
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend.conf -O "$CURRENT_DIR/$NAME/${opts["--entry"]}".js
-        
-        sed -i -e "s/{{NAME}}/$NAME/" \
-            -i -e "s/{{PORT}}/${opts["--port"]}/" \
-            "$CURRENT_DIR/$NAME/${opts["--entry"]}".js
-        
-        (cd $CURRENT_DIR/$NAME && mkdir views && cd views && mkdir layouts)
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/views/home.handlebars -O "$CURRENT_DIR/$NAME/views/home.handlebars"
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/views/layouts/main.handlebars -O "$CURRENT_DIR/$NAME/views/layouts/main.handlebars"
+        (cd $CURRENT_DIR/$NAME && echo -e '/** @type {import('\''next'\'').NextConfig} */\nconst nextConfig = {\n\tdistDir: '\''dist'\'',\n\toutput: '\''export'\'',\n};\nexport default nextConfig;' > next.config.mjs)
+
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"express.js\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
         (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
-        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}" frontend "$local_host" "${cluster_host}" $sanitized_name 
+        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
 
     fi
 

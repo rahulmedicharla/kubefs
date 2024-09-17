@@ -134,7 +134,17 @@ helmify(){
        
         for env in "${env_vars[@]}"; do
             IFS='=' read -r -a env_parts <<< "$env"
-            yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+            case $framework in 
+                "angular")
+                    yq e ".env += [{\"name\" : \"NG_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                    ;;
+                "vue")
+                    yq e ".env += [{\"name\" : \"VUE_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                    ;;
+                *)
+                    yq e ".env += [{\"name\" : \"NEXT_PUBLIC_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                    ;;
+            esac
         done
     }
 
@@ -172,7 +182,21 @@ helmify(){
         
         for secret in "${secrets[@]}"; do
             IFS='=' read -r -a secret_parts <<< "$secret"
-            yq e ".secrets += [{\"name\" : \"${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+            if [ "$type" == "frontend" ]; then
+                case $framework in 
+                    "angular")
+                        yq e ".secrets += [{\"name\" : \"NG_APP_${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                        ;;
+                    "vue")
+                        yq e ".secrets += [{\"name\" : \"VUE_APP_${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                        ;;
+                    *)
+                        yq e ".secrets += [{\"name\" : \"NEXT_PUBLIC_${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                        ;;
+                esac
+            else
+                yq e ".secrets += [{\"name\" : \"${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+            fi
         done
     fi
 
