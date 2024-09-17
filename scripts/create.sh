@@ -14,6 +14,7 @@ default_helper() {
         --framework | -f <framework> - 
             : specify the framework to use for frontend resource [express | next | vue] default: express
             : specify the framework to use for api resource [express | go | fast] default: express 
+            : specify the framework to use for db resource [mongo | cassandra] default: cassandra
     "
 }
 
@@ -200,17 +201,26 @@ create_db(){
 
     local_host=localhost
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
-
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
-    
-    mkdir $CURRENT_DIR/$NAME
-    
-    (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-    (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
-    (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\"" $SCAFFOLD -i && yq e ".project.entry = \"${opts["--entry"]}\"" $SCAFFOLD -i && yq e ".project.port = \"${opts["--port"]}\"" $SCAFFOLD -i && yq e ".project.type = \"db\"" $SCAFFOLD -i )
-    (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-    append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
 
+    case ${opts["--framework"]} in
+        "mongo")
+            mkdir $CURRENT_DIR/$NAME
+            (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+            (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"db\" | .project.framework=\"mongo\"" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
+        ;;
+        *)
+            mkdir $CURRENT_DIR/$NAME
+            (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
+            (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"db\" | .project.framework=\"cassandra\"" $SCAFFOLD -i)
+            (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
+        ;;
+    esac
     return 0
 }
 
