@@ -98,6 +98,9 @@ run_unique(){
     env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
+    if [ -f $CURRENT_DIR/$NAME/".env" ]; then
+        env_vars+=($(cat $CURRENT_DIR/$NAME/".env"))
+    fi
 
     (cd $CURRENT_DIR/$name && rm -rf .env.local && touch .env.local)
     for env_var in "${env_vars[@]}"; do
@@ -107,14 +110,14 @@ run_unique(){
                 ;;
             "frontend")
                 case $framework in
-                    "next")
-                        echo NEXT_PUBLIC_$env_var >> $CURRENT_DIR/$name/".env.local"
+                    "angular")
+                        echo NG_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
                         ;;
                     "vue")
                         echo VUE_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
                         ;;
                     *)
-                        echo $env_var >> $CURRENT_DIR/$name/".env.local"
+                        echo NEXT_PUBLIC_$env_var >> $CURRENT_DIR/$name/".env.local"
                         ;;
                     esac
                 ;;
@@ -129,7 +132,7 @@ run_unique(){
         echo "Running $NAME component on port $port using docker image $NAME..."
         
         if [ "$type" == "db" ]; then
-            echo "Connect to $NAME using 'docker exec -it $NAME-container-1 cqlsh'"
+            echo "Connect to $NAME using 'cqlsh' or 'mongosh' client"
         fi
 
         (cd $CURRENT_DIR/$NAME && $docker_run)

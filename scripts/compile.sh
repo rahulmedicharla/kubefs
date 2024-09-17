@@ -174,50 +174,47 @@ build(){
             done
             ;;  
         "frontend")
-            
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/nginx/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
             case "$framework" in
-                "next")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/nginx/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist /usr/share/nginx/html#" \
+                "angular")
+                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist/$NAME/browser /usr/share/nginx/html#" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
-
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{HOST_PORT}}/$port/" \
-                        -i -e "s/{{NAME}}/$NAME/" \
-                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 "vue")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/nginx/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
                     sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist /usr/share/nginx/html#" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
-                    
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{HOST_PORT}}/$port/" \
-                        -i -e "s/{{NAME}}/$NAME/" \
-                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 *)
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{MEDIUM}}/ENV PORT=80/" \
-                        -i -e "s/{{CMD}}/\"node\", \"${entry}.js\"/" \
+                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist /usr/share/nginx/html#" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
-                    
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{HOST_PORT}}/${port}/" \
-                        -i -e "s/{{NAME}}/$NAME/" \
-                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
             esac
 
-            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            sed -i -e "s/{{PORT}}/80/" \
+                -i -e "s/{{HOST_PORT}}/$port/" \
+                -i -e "s/{{NAME}}/$NAME/" \
+                "$CURRENT_DIR/$NAME/docker-compose.yaml"
             
-            for env in "${env_vars[@]}"; do
-                yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
-            done    
+            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+
+            case "$framework" in
+                "angular")
+                    for env in "${env_vars[@]}"; do
+                        yq e ".services.container.environment += [\"NG_APP_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                    done
+                    ;;
+                "vue")
+                    for env in "${env_vars[@]}"; do
+                        yq e ".services.container.environment += [\"VUE_APP_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                    done
+                    ;;
+                *)
+                    for env in "${env_vars[@]}"; do
+                        yq e ".services.container.environment += [\"NEXT_PUBLIC_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                    done
+                    ;;
+            esac    
             ;;
         "db")
             case $framework in 
