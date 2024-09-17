@@ -177,28 +177,24 @@ build(){
             
             case "$framework" in
                 "next")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{MEDIUM}}/RUN npm run build/" \
-                        -i -e "s/{{CMD}}/\"npm\", \"start\"/" \
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/nginx/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist /usr/share/nginx/html#" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
 
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
                     sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/$port/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
                 "vue")
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
-                    sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{MEDIUM}}/RUN npm run build/" \
-                        -i -e "s/{{CMD}}/\"npm\",\"run\",\"preview\"/" \
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/nginx/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist /usr/share/nginx/html#" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
                     sed -i -e "s/{{PORT}}/80/" \
-                        -i -e "s/{{HOST_PORT}}/${port}/" \
+                        -i -e "s/{{HOST_PORT}}/$port/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/docker-compose.yaml"
                     ;;
