@@ -145,6 +145,16 @@ download_dependencies(){
         fi
     fi
 
+    if !(command gpg &> /dev/null); then
+        echo "Downloading gpg..."
+        brew install gnupg
+
+        if [ $? -ne 0 ]; then
+            echo "Failed to install gpg. Exiting..."
+            return 1
+        fi
+    fi
+
     if !(command -v pass &> /dev/null); then
         echo "Downloading pass..."
         brew install pass

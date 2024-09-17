@@ -347,7 +347,9 @@ create_frontend(){
             return 1
         fi
 
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev" | .scripts.start = "export PORT='80' && next start"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && echo -e '/** @type {import('\''next'\'').NextConfig} */\nconst nextConfig = {\n\tdistDir: '\''dist'\'',\n\toutput: '\''export'\'',\n};\nexport default nextConfig;' > next.config.mjs)
+
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
