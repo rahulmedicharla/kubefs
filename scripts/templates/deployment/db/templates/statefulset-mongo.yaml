@@ -63,8 +63,8 @@ spec:
                 - /bin/bash
                 - -c
                 - |
-                  if [[ $(mongosh --host {{ include "deployment.fullname" . }} --eval "db.runCommand({ ping: 1})") ]]; then
-                    mongosh --host container --eval "db.getSiblingDB('{{ .Values.entry }}').createCollection('{{ .Values.entry }}')";
+                  if [[ $(mongosh --eval "db.runCommand({ ping: 1})") ]]; then
+                    mongosh --eval "db.getSiblingDB('{{ .Values.entry }}').createCollection('{{ .Values.entry }}')";
                     echo "Database & collection {{ .Values.entry }} created.";
                     exit 0;
                   else
