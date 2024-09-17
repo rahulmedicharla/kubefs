@@ -174,7 +174,7 @@ build(){
             done
             ;;  
         "frontend")
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/nginx/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
             case "$framework" in
                 "angular")
                     sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist/$NAME/browser /usr/share/nginx/html#" \
