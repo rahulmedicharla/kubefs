@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "deployment.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "deployment.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "deployment.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "deployment.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "deployment.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "deployment.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - containerPort: 27017
+        resources:
+          limits:
+            cpu: "500m"
+            memory: 1Gi
+          requests:
+            cpu: "500m"
+            memory: 1Gi
+        env:
+          {{- range .Values.env }}
+          - name: {{ .name | quote }}
+            value: {{ .value | quote }}
+          {{- end }}
+          {{- range .Values.secrets }}
+          - name: {{ .name| quote }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ .secretRef | quote }}
+                key: {{ .name | quote }}
+          {{- end }}
+        readinessProbe:
+          exec:
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  if [[ $(mongosh --host {{ include "deployment.fullname" . }} --eval 'db.runCommand({ ping: 1})') ]]; then
+                    mongosh --host container --eval \"db.getSiblingDB('{{ .Values.entry }}').createCollection('{{ .Values.entry }}')\"
+                    echo "Database & collection {{ .Values.entry }} created."
+                    exit 0
+                  else:
+                    echo "Node is not ready yet."
+                    exit 1
+                  fi
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 240
+        volumeMounts:
+        - name: mongo-data
+          mountPath: /mongo_data
+  # These are converted to volume claims by the controller
+  # and mounted at the paths mentioned above.
+  # do not use these in production until ssd GCEPersistentDisk or other ssd pd
+  volumeClaimTemplates:
+  - metadata:
+      name: mongo-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: mongo-storage
+      resources:
+        requests:
+          storage: 1Gi
