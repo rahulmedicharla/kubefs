@@ -52,6 +52,7 @@ helmify(){
     docker_repo=$(yq e '.project.docker-repo' $CURRENT_DIR/$NAME/scaffold.yaml)
     type=$(yq e '.project.type' $CURRENT_DIR/$NAME/scaffold.yaml)
     entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
+    framework=$(yq e '.project.framework' $CURRENT_DIR/$NAME/scaffold.yaml)
 
     env_vars=$(yq e '.resources[].env-remote[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
@@ -68,20 +69,39 @@ helmify(){
 
     helmify_database(){
         NAME=$1
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/db/*" -d /tmp
-        cp -r /tmp/kubefs-main/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-main
+
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/mongo.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-mongo/scripts/templates/deployment/db/*" -d /tmp
+        cp -r /tmp/kubefs-mongo/scripts/templates/deployment/db $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-mongo
 
         wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
-        sed -i -e "s#{{NAME}}#$NAME#" \
-            -i -e "s#{{IMAGE}}#cassandra#" \
-            -i -e "s#{{PORT}}#$port#" \
-            -i -e "s#{{TAG}}#latest#" \
-            -i -e "s#{{SERVICE_TYPE}}#None#" \
-            -i -e "s#{{ENTRY}}#$entry#" \
-            -i -e "s#{{HOST}}#\"\"#" \
-            "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        case $framework in
+            "mongo")
+                rm -rf $CURRENT_DIR/$NAME/deploy/templates/statefulset-cassandra.yaml
+                mv $CURRENT_DIR/$NAME/deploy/templates/statefulset-mongo.yaml $CURRENT_DIR/$NAME/deploy/templates/statefulset.yaml
+                sed -i -e "s#{{NAME}}#$NAME#" \
+                    -i -e "s#{{IMAGE}}#mongo#" \
+                    -i -e "s#{{PORT}}#$port#" \
+                    -i -e "s#{{TAG}}#latest#" \
+                    -i -e "s#{{SERVICE_TYPE}}#None#" \
+                    -i -e "s#{{ENTRY}}#$entry#" \
+                    -i -e "s#{{HOST}}#\"\"#" \
+                    "$CURRENT_DIR/$NAME/deploy/values.yaml"
+                ;;
+            *)
+                rm -rf $CURRENT_DIR/$NAME/deploy/templates/statefulset-mongo.yaml
+                mv $CURRENT_DIR/$NAME/deploy/templates/statefulset-cassandra.yaml $CURRENT_DIR/$NAME/deploy/templates/statefulset.yaml
+                sed -i -e "s#{{NAME}}#$NAME#" \
+                    -i -e "s#{{IMAGE}}#cassandra#" \
+                    -i -e "s#{{PORT}}#$port#" \
+                    -i -e "s#{{TAG}}#latest#" \
+                    -i -e "s#{{SERVICE_TYPE}}#None#" \
+                    -i -e "s#{{ENTRY}}#$entry#" \
+                    -i -e "s#{{HOST}}#\"\"#" \
+                    "$CURRENT_DIR/$NAME/deploy/values.yaml"
+                ;; 
+        esac
 
         for env in "${env_vars[@]}"; do
             IFS='=' read -r -a env_parts <<< "$env"

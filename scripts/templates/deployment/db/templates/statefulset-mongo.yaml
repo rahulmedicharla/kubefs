@@ -63,13 +63,13 @@ spec:
                 - /bin/bash
                 - -c
                 - |
-                  if [[ $(mongosh --host {{ include "deployment.fullname" . }} --eval 'db.runCommand({ ping: 1})') ]]; then
-                    mongosh --host container --eval \"db.getSiblingDB('{{ .Values.entry }}').createCollection('{{ .Values.entry }}')\"
-                    echo "Database & collection {{ .Values.entry }} created."
-                    exit 0
-                  else:
-                    echo "Node is not ready yet."
-                    exit 1
+                  if [[ $(mongosh --host {{ include "deployment.fullname" . }} --eval "db.runCommand({ ping: 1})") ]]; then
+                    mongosh --host container --eval "db.getSiblingDB('{{ .Values.entry }}').createCollection('{{ .Values.entry }}')";
+                    echo "Database & collection {{ .Values.entry }} created.";
+                    exit 0;
+                  else
+                    echo "Node is not ready yet.";
+                    exit 1;
                   fi
           initialDelaySeconds: 60
           periodSeconds: 15
