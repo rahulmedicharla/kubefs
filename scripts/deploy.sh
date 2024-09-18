@@ -146,7 +146,7 @@ helmify(){
                     yq e ".env += [{\"name\" : \"VUE_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
                     ;;
                 *)
-                    yq e ".env += [{\"name\" : \"NEXT_PUBLIC_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+                    yq e ".env += [{\"name\" : \"REACT_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
                     ;;
             esac
         done
