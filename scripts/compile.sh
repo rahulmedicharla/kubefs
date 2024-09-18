@@ -185,7 +185,7 @@ build(){
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     ;;
                 *)
-                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/build /usr/share/nginx/html#" \
+                    sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist /usr/share/nginx/html#" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     ;;
             esac
@@ -211,7 +211,7 @@ build(){
                     ;;
                 *)
                     for env in "${env_vars[@]}"; do
-                        yq e ".services.container.environment += [\"REACT_APP_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                        yq e ".services.container.environment += [\"NEXT_PUBLIC_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
                     done
                     ;;
             esac    
