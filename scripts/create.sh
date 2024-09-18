@@ -12,7 +12,7 @@ default_helper() {
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
         --framework | -f <framework> - 
-            : specify the framework to use for frontend resource [react | vue | angular] default: react
+            : specify the framework to use for frontend resource [next | vue | angular] default: next
             : specify the framework to use for api resource [express | go | fast] default: express 
             : specify the framework to use for db resource [mongo | cassandra] default: cassandra
     "
@@ -327,7 +327,7 @@ create_frontend(){
 
     SCAFFOLD=scaffold.yaml
 
-    eval $(parse_optional_params "3000" "App.tsx" "react" $@)
+    eval $(parse_optional_params "3000" "index" "next" $@)
 
     validate_port "${opts["--port"]}"
     if [ $? -eq 1 ]; then
@@ -383,22 +383,24 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
         append_to_manifest $NAME "App.vue" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
     else
-        (npx create-react-app@latest $NAME --no-git --template typescript)
-        (cd $CURRENT_DIR/$NAME && rm -rf .git)
+        mkdir $CURRENT_DIR/$NAME
+        (cd $CURRENT_DIR/$NAME && npx create-next-app --ts . )
 
         if [ $? -ne 0 ]; then
             return 1
         fi
 
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.start = "export PORT='${opts["--port"]}' && react-scripts start"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && echo -e '/** @type {import('\''next'\'').NextConfig} */\nconst nextConfig = {\n\tdistDir: '\''dist'\'',\n\toutput: '\''export'\'',\n};\nexport default nextConfig;' > next.config.mjs)
+
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "export PORT='${opts["--port"]}' && next dev"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
-        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"react\""  $SCAFFOLD -i )
+        (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"page.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"next\""  $SCAFFOLD -i )
         (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
-        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm start\"" $SCAFFOLD -i)
+        (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "App.tsx" "${opts["--port"]}" "npm start" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "page.tsx" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
 
     fi
 

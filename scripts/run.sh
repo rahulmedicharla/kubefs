@@ -117,7 +117,7 @@ run_unique(){
                         echo VUE_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
                         ;;
                     *)
-                        echo REACT_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
+                        echo NEXT_PUBLIC_$env_var >> $CURRENT_DIR/$name/".env.local"
                         ;;
                     esac
                 ;;
