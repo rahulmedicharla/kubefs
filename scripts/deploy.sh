@@ -266,6 +266,12 @@ deploy_google(){
     fi
 
     if [ "${opts["--no-deploy"]}" == false ]; then
+
+        if [ "$(yq e '.google' $CURRENT_DIR/manifest.yaml)" == "null" ]; then
+            print_error "google deployment configuration is missing in manifest.yaml"
+            return 1
+        fi
+
         if ! gcloud auth list --format="value(account)" | grep -q "@"; then
             print_warning "Google Cloud account not logged in. Please login using 'gcloud auth login'"
             return 1
@@ -283,7 +289,7 @@ deploy_google(){
 
         if ! gcloud container clusters list --format="value(name)" | grep -q $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml); then
             print_warning "GKE cluster does not exist. Creating GKE cluster..."
-            gcloud container clusters create-auto $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --region=$(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
+            gcloud container clusters create-auto $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --location=$(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
             if [ $? -eq 1 ]; then
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
                 return 1
@@ -301,7 +307,7 @@ deploy_google(){
             print_success "GKE cloud auth plugin installed successfully"
         fi
 
-        gcloud container clusters get-credentials $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
+        gcloud container clusters get-credentials $(yq e '.google.cluster_name' $CURRENT_DIR/manifest.yaml) --location $(yq e '.google.region' $CURRENT_DIR/manifest.yaml)
         if [ $? -eq 1 ]; then
             print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
             return 1
@@ -366,6 +372,11 @@ deploy_azure(){
 
     if [ "${opts["--no-deploy"]}" == false ]; then
 
+        if [ "$(yq e '.azure' $CURRENT_DIR/manifest.yaml)" == "null" ]; then
+            print_error "Azure deployment configuration is missing in manifest.yaml"
+            return 1
+        fi
+
         if ! az account show > /dev/null 2>&1; then
             print_warning "Azure account not logged in. Please login using 'kubefs config azure'"
             return 1
@@ -413,7 +424,7 @@ deploy_azure(){
 
         if az group exists --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" | grep -q "false"; then
             print_warning "Resource group $(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml) does not exist. Creating resource group..."
-            az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --region "$(yq e '.azure.region' $CURRENT_DIR/manifest.yaml)"
+            az group create --name "$(yq e '.azure.resource_group' $CURRENT_DIR/manifest.yaml)" --location "$(yq e '.azure.region' $CURRENT_DIR/manifest.yaml)"
 
             if [ $? -eq 1 ]; then
                 print_error "Error occurred deploying $NAME. Please try again or use 'kubefs --help' for more information."
@@ -513,14 +524,19 @@ deploy_aws(){
 
     if [ "${opts["--no-deploy"]}" == false ]; then
 
+        if [ "$(yq e '.aws' $CURRENT_DIR/manifest.yaml)" == "null" ]; then
+            print_error "aws deployment configuration is missing in manifest.yaml"
+            return 1
+        fi
+
         if ! aws sts get-caller-identity > /dev/null 2>&1; then
             print_warning "AWS account not logged in. Please login using 'kubefs config aws'"
             return 1
         fi
 
-        if ! eksctl get cluster --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) | grep -q $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml); then
+        if ! eksctl get cluster --location $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) | grep -q $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml); then
             print_warning "EKS cluster does not exist. Creating EKS cluster..."
-            eksctl create cluster --name $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --node-type t2.micro --nodes-min 1 --nodes-max 5 --managed
+            eksctl create cluster --name $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --location $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --node-type t2.micro --nodes-min 1 --nodes-max 5 --managed
 
             if [ $? -eq 1 ]; then
                 print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
@@ -529,12 +545,12 @@ deploy_aws(){
             print_success "EKS cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) created successfully"
         fi
 
-        eksctl utils write-kubeconfig --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml)
+        eksctl utils write-kubeconfig --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --location $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml)
 
-        if [ $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) -o json | jq -r '.[].DesiredCapacity') == 0 ]; then
+        if [ $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --location $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) -o json | jq -r '.[].DesiredCapacity') == 0 ]; then
             print_warning "EKS not running. Starting EKS cluster..."
-            for nodegroup in $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --output json | jq -r '.[].Name'); do
-                eksctl scale nodegroup --region $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --name $nodegroup --nodes-min 1 --nodes-max 5
+            for nodegroup in $(eksctl get nodegroup --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --location $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --output json | jq -r '.[].Name'); do
+                eksctl scale nodegroup --location $(yq e '.aws.region' $CURRENT_DIR/manifest.yaml) --cluster $(yq e '.aws.cluster_name' $CURRENT_DIR/manifest.yaml) --name $nodegroup --nodes-min 1 --nodes-max 5
             done
         fi
 
