@@ -160,13 +160,15 @@ remove_unique(){
         IFS=$'\n' read -r -d '' -a remove_docker < <(yq e '.remove.docker[]' "$CURRENT_DIR/$NAME/scaffold.yaml" && printf '\0')
         for cmd in "${remove_docker[@]}"; do
             eval "$cmd"
-
         done
 
         IFS=$'\n' read -r -d '' -a remove_local < <(yq e '.remove.local[]' "$CURRENT_DIR/$NAME/scaffold.yaml" && printf '\0')
         for cmd in "${remove_local[@]}"; do
             eval "$cmd"
         done
+
+        docker rmi $NAME:latest > /dev/null 2>&1
+        docker rmi ${docker_repo}:latest > /dev/null 2>&1
 
     fi
     

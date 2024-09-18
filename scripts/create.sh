@@ -406,8 +406,10 @@ create_frontend(){
 
     print_warning "Please enter the hostname to the frontend application: default is all hosts (*)"
     read hostname
+    print_warning "Please enter the path to the frontend application: default path (/)"
+    read path
     
-    yq e ".project.hostname = \"$hostname\"" $CURRENT_DIR/$NAME/$SCAFFOLD -i
+    yq e ".project.hostname = \"$hostname\" | .project.path = \"$path\"" $CURRENT_DIR/$NAME/$SCAFFOLD -i
 
     return 0
 }
