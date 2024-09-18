@@ -100,7 +100,6 @@ helmify(){
                     -i -e "s#{{SERVICE_TYPE}}#None#" \
                     -i -e "s#{{ENTRY}}#$entry#" \
                     -i -e "s#{{HOST}}#\"\"#" \
-                    -i -e "s#{{PATH}}#\"\"#" \
                     "$CURRENT_DIR/$NAME/deploy/values.yaml"
                 ;; 
         esac
@@ -133,7 +132,6 @@ helmify(){
             -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
             -i -e "s#{{ENTRY}}#$entry#" \
             -i -e "s#{{HOST}}#$hostname#" \
-            -i -e "s#{{PATH}}#$path#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
        
         for env in "${env_vars[@]}"; do
@@ -167,7 +165,6 @@ helmify(){
             -i -e "s#{{SERVICE_TYPE}}#ClusterIP#" \
             -i -e "s#{{ENTRY}}#$entry#" \
             -i -e "s#{{HOST}}#\"\"#" \
-            -i -e "s#{{PATH}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
         for env in "${env_vars[@]}"; do
