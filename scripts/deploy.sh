@@ -658,12 +658,13 @@ deploy_unique(){
 
                 helm upgrade --install $NAME $CURRENT_DIR/$NAME/deploy
 
-                print_warning "Deployed $NAME... Use 'minikube tunnel' or 'minikube service -n $NAME $NAME-deployment --url' to port-forward the service to localhost"
-
                 if [ $? -eq 1 ]; then
                     print_error "Error occured deploying $NAME. Please try again or use 'kubefs --help' for more information."
                     return 1
                 fi
+
+                print_warning "Deployed $NAME... Use 'minikube tunnel' or 'minikube service -n $NAME $NAME-deployment --url' to port-forward the service to localhost"
+
             fi
             return 0
             ;;
