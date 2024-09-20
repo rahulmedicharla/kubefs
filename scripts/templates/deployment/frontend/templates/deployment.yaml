@@ -34,18 +34,6 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: {{ .Chart.Name }}
-          env:
-            {{- range .Values.env }}
-            - name: {{ .name | quote }}
-              value: {{ .value | quote }}
-            {{- end }}
-            {{- range .Values.secrets }}
-            - name: {{ .name| quote }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .secretRef | quote }}
-                  key: {{ .name | quote }}
-            {{- end }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -64,6 +52,33 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        - name: env-api
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- range .Values.secrets }}
+            - name: {{ .name| quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretRef | quote }}
+                  key: {{ .name | quote }}
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: rmedicharla/env-kubefs-api:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
