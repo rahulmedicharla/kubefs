@@ -33,6 +33,8 @@ parse_optional_params(){
     echo $(declare -p opts)
 }
 
+orig_stty_settings=$(stty -g)
+
 declare -a pids
 
 run_all(){
@@ -43,6 +45,37 @@ run_all(){
 
     manifest_data=$(yq e '.resources[] | .name + ":" + .type' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
+
+    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+
+    for project_info in "${manifest_data[@]}"; do
+        name=$(echo $project_info | cut -d ":" -f 1)
+        type=$(echo $project_info | cut -d ":" -f 2)
+
+        if [ -z $name ]; then
+            default_helper
+            return 1
+        fi
+
+        if [ ! -f "$CURRENT_DIR/$name/scaffold.yaml" ]; then
+            print_error "$name is not a valid resource"
+            default_helper
+            return 1
+        fi
+
+        if [ -f $CURRENT_DIR/$name/".env" ]; then
+            env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+        fi
+    done
+
+    (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
+    for env_var in "${env_vars[@]}"; do
+        (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
+    done
+
+    (cd $CURRENT_DIR/env-api && docker compose up) &
+    pids+=($!:$name:kubefs:docker)
 
     exit_flag=0
 
@@ -95,38 +128,6 @@ run_unique(){
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
     framework=$(yq e '.project.framework' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
-    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
-
-    if [ -f $CURRENT_DIR/$NAME/".env" ]; then
-        env_vars+=($(cat $CURRENT_DIR/$NAME/".env"))
-    fi
-
-    (cd $CURRENT_DIR/$name && rm -rf .env.local && touch .env.local)
-    for env_var in "${env_vars[@]}"; do
-        case $type in
-            "api")
-                echo $env_var >> $CURRENT_DIR/$name/".env.local"
-                ;;
-            "frontend")
-                case $framework in
-                    "angular")
-                        echo NG_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
-                        ;;
-                    "vue")
-                        echo VUE_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
-                        ;;
-                    *)
-                        echo REACT_APP_$env_var >> $CURRENT_DIR/$name/".env.local"
-                        ;;
-                    esac
-                ;;
-            *)
-                ;;
-        esac
-    done
-    source $CURRENT_DIR/$name/".env.local"
-
     if [ "${opts["--platform"]}" == "docker" ]; then
         
         echo "Running $NAME component on port $port using docker image $NAME..."
@@ -165,6 +166,8 @@ run_helper(){
         return 1
     fi
 
+    exit_flag=0
+
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$name/scaffold.yaml)
     local_run=$(yq e '.up.local' $CURRENT_DIR/$name/scaffold.yaml)
     
@@ -178,14 +181,33 @@ run_helper(){
         return 0
     fi
 
-    run_unique $name "${opts[@]}"
+    (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
+    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+
+    if [ -f $CURRENT_DIR/$name/".env" ]; then
+        env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+    fi
+
+    for env_var in "${env_vars[@]}"; do
+        (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
+    done
+
+    (cd $CURRENT_DIR/env-api && docker compose up) &
+    pids+=($!:$name:kubefs:docker)
+
+    run_unique $name "${opts[@]}" & 
+    pids+=($!:$name:$type:"${opts["--platform"]}")
+
+    while [ "$exit_flag" -eq "0" ]; do
+        sleep 1
+    done
 
     return 0
 }
 
 cleanup(){
     CURRENT_DIR=`pwd`
-
     if [ ${#pids[@]} -gt 0 ]; then
         echo "Stopping all resources..."
 
@@ -195,12 +217,17 @@ cleanup(){
             type=$(echo $pid_info | cut -d ":" -f 3)
             platform=$(echo $pid_info | cut -d ":" -f 4)
 
+            if [ "$type" == "kubefs" ]; then
+                (cd $CURRENT_DIR/env-api && docker compose down 2>/dev/null)
+                continue
+            fi
+
             docker_down=$(yq e '.down.docker' $CURRENT_DIR/$name/scaffold.yaml)
 
-            if [ $platform == "docker" ]; then
+            if [ "$platform" == "docker" ]; then
                 (cd $CURRENT_DIR/$name && $docker_down)
             else
-                if [ $type == "db" ]; then
+                if [ "$type" == "db" ]; then
                     $docker_down 2>/dev/null
                 else
                     kill $pid 2>/dev/null
@@ -210,6 +237,8 @@ cleanup(){
         exit_flag=1
         pids=()  
     fi
+    stty $orig_stty_settings
+    return 0
 }
 
 trap cleanup SIGINT
