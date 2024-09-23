@@ -70,16 +70,12 @@ spec:
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: 
-            - containerPort: 5000
+            - containerPort: {{ .Values.kubefsEnv.port }}
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: /health
-              port: 5000
+            {{- toYaml .Values.kubefsEnv.livenessProbe | nindent 12 }}
           readinessProbe:
-            httpGet:
-              path: /health
-              port: 5000
+            {{- toYaml .Values.kubefsEnv.readinessProbe | nindent 12 }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
