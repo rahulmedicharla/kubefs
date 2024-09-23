@@ -88,10 +88,8 @@ spec:
               protocol: TCP
           args:
             - "--api.insecure=true"
-            - "--api.dashboard=true"
-            - "--providers.kubernetescrd"
+            - "--providers.file.directory=/config"
             - "--entrypoints.web.address=:8000"
-            - "--entrypoints.traefik.address=:8080"
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
