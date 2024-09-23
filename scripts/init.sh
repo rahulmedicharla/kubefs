@@ -30,7 +30,7 @@ init_project() {
 
     mkdir env-api
     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/env-api/docker-compose.yaml
-    sed -i -e "s#{{PORT}}#80#" \
+    sed -i -e "s#{{PORT}}#5000#" \
         -i -e "s#{{HOST_PORT}}#5000#" \
         -i -e "s#{{NAME}}#rmedicharla/env-kubefs-api:latest#" \
         "$CURRENT_DIR/env-api/docker-compose.yaml"
