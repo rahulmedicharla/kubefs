@@ -64,9 +64,13 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: []
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
+            httpGet:
+              path: /ping
+              port: 8080
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
+            httpGet:
+              path: /ping
+              port: 8080
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         - name: traefik
@@ -79,6 +83,9 @@ spec:
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
+              protocol: TCP
+            - name: admin
+              containerPort: 8080
               protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
