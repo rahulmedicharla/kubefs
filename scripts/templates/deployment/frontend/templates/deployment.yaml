@@ -45,17 +45,9 @@ spec:
             - --entrypoints.web.address=:8000
             - --providers.file.directory=/config
           livenessProbe:
-            httpGet:
-              path: /ping
-              port: web
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            {{- toYaml .Values.kubefsEnv.traefikLivenessProbe | nindent 12 }}
           readinessProbe:
-            httpGet:
-              path: /ping
-              port: web
-            initialDelaySeconds: 10
-            periodSeconds: 10
+            {{- toYaml .Values.kubefsEnv.traefikReadinessProbe | nindent 12 }}
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
