@@ -20,4 +20,4 @@ data:
         backend:
           loadBalancer:
             servers:
-              - url: "http://localhost:8080"s
+              - url: "http://localhost:8080"
