@@ -44,10 +44,6 @@ spec:
             - --api.dashboard=true
             - --entrypoints.web.address=:8000
             - --providers.file.directory=/config
-          livenessProbe:
-            {{- toYaml .Values.kubefsEnv.traefikLivenessProbe | nindent 12 }}
-          readinessProbe:
-            {{- toYaml .Values.kubefsEnv.traefikReadinessProbe | nindent 12 }}
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
