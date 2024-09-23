@@ -89,14 +89,12 @@ spec:
             - "--providers.docker=true"
             - "--providers.docker.exposedByDefault=false"
             - "--entrypoints.web.address=:80"
+          {{- with .Values.volumeMounts }}
           volumeMounts:
-            - name: traefik-config
-              mountPath: /config
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.volumes }}
       volumes:
-        - name: traefik-config
-          configMap:
-            name: traefik-config
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}

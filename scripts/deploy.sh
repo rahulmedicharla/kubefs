@@ -129,8 +129,8 @@ helmify(){
             -i -e "s#{{HOST}}#$hostname#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
-        # yq e ".volumeMounts += [{\"name\": \"traefik-config\", \"mountPath\": \"/config\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-        # yq e ".volumes += [{\"name\": \"traefik-config\", \"configMap\": {\"name\": \"traefik-config\"}}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        yq e ".volumeMounts += [{\"name\": \"traefik-config\", \"mountPath\": \"/config\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        yq e ".volumes += [{\"name\": \"traefik-config\", \"configMap\": {\"name\": \"traefik-config\"}}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
     }
 
     helmify_api(){
