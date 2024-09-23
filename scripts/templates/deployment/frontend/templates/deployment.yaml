@@ -88,9 +88,10 @@ spec:
               protocol: TCP
           args:
             - "--api.insecure=true"
-            - "--providers.docker=true"
-            - "--providers.docker.exposedByDefault=false"
+            - "--api.dashboard=true"
+            - "--providers.kubernetescrd"
             - "--entrypoints.web.address=:8000"
+            - "--entrypoints.traefik.address=:8080"
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
