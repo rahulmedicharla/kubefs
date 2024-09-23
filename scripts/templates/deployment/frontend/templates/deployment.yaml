@@ -70,7 +70,7 @@ spec:
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: 
-              containerPort: 5000
+            - containerPort: 5000
               protocol: TCP
       {{- with .Values.volumes }}
       volumes:
