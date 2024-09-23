@@ -72,6 +72,14 @@ spec:
           ports: 
             - containerPort: 5000
               protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
