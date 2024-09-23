@@ -39,49 +39,19 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: fe-http
-              containerPort: 80
+            - name: http
+              containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
-            httpGet:
-              path: /
-              port: fe-http
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
-            httpGet:
-              path: /
-              port: fe-http
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-        - name: backend
-          env:
-            {{- range .Values.env }}
-            - name: {{ .name | quote }}
-              value: {{ .value | quote }}
-            {{- end }}
-            {{- range .Values.secrets }}
-            - name: {{ .name| quote }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .secretRef | quote }}
-                  key: {{ .name | quote }}
-            {{- end }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: rmedicharla/env-kubefs-api:latest
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - containerPort: 80
-              name: be-http
-          livenessProbe:
-            httpGet:
-              path: /
-              port: be-http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: be-http
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
