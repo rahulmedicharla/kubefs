@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: traefik-config
+  name: {{ include "deployment.fullname" . }}-traefik-config
   namespace: {{ .Values.namespace }}
 data:
   traefik.yml: |
@@ -17,8 +17,8 @@ data:
         frontend:
           loadBalancer:
             servers:
-              - url: "http://localhost:80"
+              - url: "http://localhost:{{ .Values.service.port }}"
         backend:
           loadBalancer:
             servers:
-              - url: "http://localhost:8080"
+              - url: "http://localhost:{{ .Values.kubefsEnv.port }}"

@@ -70,15 +70,34 @@ spec:
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: 
-            - containerPort: {{ .Values.kubefsEnv.port }}
+            - name: backend
+              containerPort: {{ .Values.kubefsEnv.port }}
               protocol: TCP
           livenessProbe:
             {{- toYaml .Values.kubefsEnv.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.kubefsEnv.readinessProbe | nindent 12 }}
+        - name: traefik
+          image: traefik:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: web
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          args:
+            - "--api.insecure=true"
+            - "--providers.docker=true"
+            - "--providers.docker.exposedByDefault=false"
+            - "--entrypoints.web.address=:80"
+          volumeMounts:
+            - name: traefik-config
+              mountPath: /config
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
+        - name: traefik-config
+          configMap:
+            name: {{ include "deployment.fullname" . }}-traefik-config
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
