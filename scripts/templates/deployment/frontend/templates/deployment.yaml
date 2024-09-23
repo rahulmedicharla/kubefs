@@ -39,8 +39,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: frontend-http
-              containerPort: {{ .Values.service.port }}
+            - containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
             {{- toYaml .Values.livenessProbe | nindent 12 }}
@@ -70,42 +69,41 @@ spec:
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: 
-            - name: backend-http
-              containerPort: {{ .Values.kubefsEnv.port }}
+            - containerPort: {{ .Values.kubefsEnv.port }}
               protocol: TCP
           livenessProbe:
             {{- toYaml .Values.kubefsEnv.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.kubefsEnv.readinessProbe | nindent 12 }}
-        - name: traefik
-          image: traefik:latest
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: traefik-http
-              containerPort: 8000
-            - name: traefik-web
-              containerPort: 8080
-              protocol: TCP
-          args:
-            - "--api.insecure=true"
-            - "--providers.file.directory=/config"
-            - "--entrypoints.web.address=:8000"
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          livenessProbe:
-            httpGet:
-              path: /ping
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /ping
-              port: 8000
-            initialDelaySeconds: 10
-            periodSeconds: 10
+        # - name: traefik
+        #   image: traefik:latest
+        #   imagePullPolicy: {{ .Values.image.pullPolicy }}
+        #   ports:
+        #     - name: traefik-http
+        #       containerPort: 8000
+        #     - name: traefik-web
+        #       containerPort: 8080
+        #       protocol: TCP
+        #   args:
+        #     - "--api.insecure=true"
+        #     - "--providers.file.directory=/config"
+        #     - "--entrypoints.web.address=:8000"
+        #   {{- with .Values.volumeMounts }}
+        #   volumeMounts:
+        #     {{- toYaml . | nindent 12 }}
+        #   {{- end }}
+        #   livenessProbe:
+        #     httpGet:
+        #       path: /ping
+        #       port: 8000
+        #     initialDelaySeconds: 10
+        #     periodSeconds: 10
+        #   readinessProbe:
+        #     httpGet:
+        #       path: /ping
+        #       port: 8000
+        #     initialDelaySeconds: 10
+        #     periodSeconds: 10
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
