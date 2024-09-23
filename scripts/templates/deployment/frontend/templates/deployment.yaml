@@ -33,6 +33,33 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: 60
       containers:
+        - name: traefik
+          image: traefik:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+              name: web
+          args:
+            - --api.dashboard=true
+            - --entrypoints.web.address=:8000
+            - --providers.file.directory=/config
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: web
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: web
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
         - name: frontend
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -75,33 +102,6 @@ spec:
             {{- toYaml .Values.kubefsEnv.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.kubefsEnv.readinessProbe | nindent 12 }}
-        - name: traefik
-          image: traefik:latest
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - containerPort: 8000
-              protocol: TCP
-              name: web
-          args:
-            - --api.dashboard=true
-            - --entrypoints.web.address=:8000
-            - --providers.file.directory=/config
-          livenessProbe:
-            httpGet:
-              path: /ping
-              port: web
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /ping
-              port: web
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
