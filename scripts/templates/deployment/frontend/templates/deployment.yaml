@@ -96,7 +96,7 @@ spec:
       volumes:
         - name: traefik-config
           configMap:
-            name: {{ include "deployment.fullname" . }}-traefik-config
+            name: traefik-config
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
