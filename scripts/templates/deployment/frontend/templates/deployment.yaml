@@ -39,16 +39,17 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
+            - name: fe-http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: fe-http
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: fe-http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- with .Values.volumeMounts }}
@@ -73,16 +74,17 @@ spec:
           image: rmedicharla/env-kubefs-api:latest
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
+            - name: be-http
               containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /
-              port: 80
+              port: be-http
           readinessProbe:
             httpGet:
               path: /
-              port: 80
+              port: be-http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.volumes }}
