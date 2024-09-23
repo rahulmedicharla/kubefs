@@ -90,7 +90,7 @@ spec:
             - "--api.insecure=true"
             - "--providers.docker=true"
             - "--providers.docker.exposedByDefault=false"
-            - "--entrypoints.web.address=:8080"
+            - "--entrypoints.web.address=:8000"
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
