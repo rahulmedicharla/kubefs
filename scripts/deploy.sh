@@ -119,7 +119,7 @@ helmify(){
         cp -r /tmp/kubefs-frontend-env/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
         rm -rf /tmp/repo.zip /tmp/kubefs-frontend-env
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
             -i -e "s#{{IMAGE}}#${docker_repo}#" \
             -i -e "s#{{PORT}}#80#" \
@@ -129,8 +129,8 @@ helmify(){
             -i -e "s#{{HOST}}#$hostname#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
-        yq e ".volumeMounts += [{\"name\": \"traefik-config\", \"mountPath\": \"/config\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-        yq e ".volumes += [{\"name\": \"traefik-config\", \"configMap\": {\"name\": \"traefik-config\"}}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        # yq e ".volumeMounts += [{\"name\": \"traefik-config\", \"mountPath\": \"/config\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        # yq e ".volumes += [{\"name\": \"traefik-config\", \"configMap\": {\"name\": \"traefik-config\"}}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
     }
 
     helmify_api(){

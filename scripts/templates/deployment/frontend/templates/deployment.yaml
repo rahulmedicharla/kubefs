@@ -94,10 +94,10 @@ spec:
               mountPath: /config
       {{- with .Values.volumes }}
       volumes:
-        {{- toYaml . | nindent 8 }}
         - name: traefik-config
           configMap:
             name: {{ include "deployment.fullname" . }}-traefik-config
+        {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
