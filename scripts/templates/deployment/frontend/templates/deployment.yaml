@@ -44,7 +44,11 @@ spec:
             - --api.dashboard=true
             - --entrypoints.web.address=:8000
             - --providers.file.directory=/config
-          {{- with .Values.volumeMounts }}
+          livenessProbe:
+            {{- toYaml .Values.kubefsEnv.traefikLivenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.kubefsEnv.traefikReadinessProbe | nindent 12 }} 
+          {{- with .Values.kubefsEnv.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -91,8 +95,8 @@ spec:
             {{- toYaml .Values.kubefsEnv.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.kubefsEnv.readinessProbe | nindent 12 }}
-      {{- with .Values.volumes }}
       volumes:
+      {{- with .Values.kubefsEnv.volumes}}  
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
