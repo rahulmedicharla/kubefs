@@ -8,9 +8,13 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: web
+    - port: 80
+      targetPort: traefik-http
       protocol: TCP
       name: http
+    - port: 8080
+      targetPort: traefik-web
+      protocol: TCP
+      name: web
   selector:
     {{- include "deployment.selectorLabels" . | nindent 4 }}

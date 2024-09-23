@@ -39,7 +39,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: http
+            - name: frontend-http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
           livenessProbe:
@@ -70,7 +70,7 @@ spec:
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: 
-            - name: backend
+            - name: backend-http
               containerPort: {{ .Values.kubefsEnv.port }}
               protocol: TCP
           livenessProbe:
@@ -81,8 +81,10 @@ spec:
           image: traefik:latest
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: web
-              containerPort: {{ .Values.service.port }}
+            - name: traefik-http
+              containerPort: 8000
+            - name: traefik-web
+              containerPort: 8080
               protocol: TCP
           args:
             - "--api.insecure=true"

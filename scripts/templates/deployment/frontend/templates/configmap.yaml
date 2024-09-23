@@ -5,6 +5,9 @@ metadata:
   namespace: {{ .Values.namespace }}
 data:
   traefik.yml: |
+    entryPoints:
+      web:
+        address: ":8000"
     http:
       routers:
         frontend:
