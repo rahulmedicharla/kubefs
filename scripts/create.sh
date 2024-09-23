@@ -11,7 +11,7 @@ default_helper() {
     Args:
         --port | -p <port> - specify the port number for resource
         --entry | -e <entry> - specify the entry [file (frontend or api) | keyspace (db)] for the resource
-        --framework | -f <framework> - 
+        --framework | -f <framework>
             : specify the framework to use for frontend resource [react | vue | angular] default: react
             : specify the framework to use for api resource [express | go | fast] default: express 
             : specify the framework to use for db resource [mongo | cassandra] default: cassandra
@@ -25,7 +25,7 @@ validate_port(){
     IFS=$'\n' read -r -d '' -a ports <<< "$ports"
 
     for port in "${ports[@]}"; do
-        if [ "$port" == "$CASE" ]; then
+        if [ "$port" == "$CASE" -o "$port" == "5000" ]; then
             return 1
         fi
     done
@@ -179,7 +179,7 @@ create_helper_func() {
     echo ""
     echo "To start the project use 'kubefs run $NAME'"
     echo ""
-    print_warning "To utilize environment variables, create a .env file in the project directory"
+    print_warning "To utilize environment variables, create a .env file in the project directory - fetch using fetch("http://localhost:5000/env/\$ENV_NAME")"
     echo ""
 
     return 0
@@ -356,7 +356,8 @@ create_frontend(){
         fi
 
         (cd $CURRENT_DIR/$NAME && jq '.scripts.start = "ng serve --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
-
+        (cd $CURRENT_DIR/$NAME && wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-angular-config.conf -O $CURRENT_DIR/$NAME/src/proxy.conf.json && jq '.projects["'$NAME'"].architect.serve.options.proxyConfig = "src/proxy.conf.json"' angular.json > tmp.json && mv tmp.json angular.json)
+        
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"main.ts\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"angular\""  $SCAFFOLD -i )
         (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
@@ -366,7 +367,10 @@ create_frontend(){
         append_to_manifest $NAME "main.ts" "${opts["--port"]}" "npm run start" frontend "$local_host" "${cluster_host}" $sanitized_name
 
     elif [ ${opts["--framework"]} == "vue" ]; then
-        npm create vue@latest $NAME
+        npm create vue@latest $NAME -- --typescript
+        if [ $? -ne 0 ]; then
+            return 1
+        fi
 
         if [ $? -ne 0 ]; then
             return 1
@@ -374,6 +378,8 @@ create_frontend(){
 
         (cd $CURRENT_DIR/$NAME && npm i)
         (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
+
+        (cd $CURRENT_DIR/$NAME && rm -rf vite.config.ts && wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-vite-config.conf -O $CURRENT_DIR/$NAME/vite.config.ts)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.vue\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"vue\""  $SCAFFOLD -i )
@@ -390,7 +396,7 @@ create_frontend(){
             return 1
         fi
 
-        (cd $CURRENT_DIR/$NAME && jq '.scripts.start = "export PORT='${opts["--port"]}' && react-scripts start"' package.json > tmp.json && mv tmp.json package.json)
+        (cd $CURRENT_DIR/$NAME && jq '.scripts.start = "export PORT='${opts["--port"]}' && react-scripts start" | .proxy = "http://localhost:5000"' package.json > tmp.json && mv tmp.json package.json)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.tsx\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"react\""  $SCAFFOLD -i )

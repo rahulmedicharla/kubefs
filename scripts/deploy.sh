@@ -102,12 +102,7 @@ helmify(){
                     -i -e "s#{{HOST}}#\"\"#" \
                     "$CURRENT_DIR/$NAME/deploy/values.yaml"
                 ;; 
-        esac
-
-        for env in "${env_vars[@]}"; do
-            IFS='=' read -r -a env_parts <<< "$env"
-            yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-        done        
+        esac    
     }
 
     helmify_frontend(){
@@ -133,21 +128,7 @@ helmify(){
             -i -e "s#{{ENTRY}}#$entry#" \
             -i -e "s#{{HOST}}#$hostname#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
-       
-        for env in "${env_vars[@]}"; do
-            IFS='=' read -r -a env_parts <<< "$env"
-            case $framework in 
-                "angular")
-                    yq e ".env += [{\"name\" : \"NG_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-                    ;;
-                "vue")
-                    yq e ".env += [{\"name\" : \"VUE_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-                    ;;
-                *)
-                    yq e ".env += [{\"name\" : \"REACT_APP_${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-                    ;;
-            esac
-        done
+        
     }
 
     helmify_api(){
@@ -167,10 +148,7 @@ helmify(){
             -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
-        for env in "${env_vars[@]}"; do
-            IFS='=' read -r -a env_parts <<< "$env"
-            yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-        done
+        
     }
     
     case "$type" in
@@ -179,26 +157,17 @@ helmify(){
         "db") helmify_database $NAME;;
     esac
 
+    for env in "${env_vars[@]}"; do
+        IFS='=' read -r -a env_parts <<< "$env"
+        yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+    done
+
     if [ ${#secrets[@]} -gt 0 ]; then
         wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/shared/template-secret.conf -O $CURRENT_DIR/$NAME/deploy/templates/secret.yaml
         
         for secret in "${secrets[@]}"; do
             IFS='=' read -r -a secret_parts <<< "$secret"
-            if [ "$type" == "frontend" ]; then
-                case $framework in 
-                    "angular")
-                        yq e ".secrets += [{\"name\" : \"NG_APP_${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-                        ;;
-                    "vue")
-                        yq e ".secrets += [{\"name\" : \"VUE_APP_${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-                        ;;
-                    *)
-                        yq e ".secrets += [{\"name\" : \"NEXT_PUBLIC_${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-                        ;;
-                esac
-            else
-                yq e ".secrets += [{\"name\" : \"${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
-            fi
+            yq e ".secrets += [{\"name\" : \"${secret_parts[0]}\", \"value\": \"${secret_parts[1]}\", \"secretRef\": \"$NAME-deployment-secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
         done
     fi
 
