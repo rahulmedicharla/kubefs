@@ -111,13 +111,12 @@ build(){
     env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
-    if [ -f $CURRENT_DIR/$NAME/".env" ]; then
-        env_vars+=($(cat $CURRENT_DIR/$NAME/".env"))
+    if [ -f $CURRENT_DIR/$name/".env" ]; then
+        env_vars+=($(cat $CURRENT_DIR/$name/".env"))
     fi
 
     case "$type" in
         "api")
-
             case "$framework" in
                 "fast")
                     entry="${entry%.py}"
@@ -168,13 +167,9 @@ build(){
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
             esac
-            
-            for env in "${env_vars[@]}"; do
-                yq e ".services.container.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
-            done
             ;;  
         "frontend")
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
             case "$framework" in
                 "angular")
                     sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist/$NAME/browser /usr/share/nginx/html#" \
@@ -190,33 +185,20 @@ build(){
                     ;;
             esac
 
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-            sed -i -e "s/{{PORT}}/80/" \
-                -i -e "s/{{HOST_PORT}}/$port/" \
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            sed -i -e "s/{{HOST_PORT}}/$port/" \
                 -i -e "s/{{NAME}}/$NAME/" \
                 "$CURRENT_DIR/$NAME/docker-compose.yaml"
             
+            yq e '.services.backend.environment = []' $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            for env in "${env_vars[@]}"; do
+                yq e ".services.backend.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            done
+            
             (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
-
-            case "$framework" in
-                "angular")
-                    for env in "${env_vars[@]}"; do
-                        yq e ".services.container.environment += [\"NG_APP_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
-                    done
-                    ;;
-                "vue")
-                    for env in "${env_vars[@]}"; do
-                        yq e ".services.container.environment += [\"VUE_APP_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
-                    done
-                    ;;
-                *)
-                    for env in "${env_vars[@]}"; do
-                        yq e ".services.container.environment += [\"REACT_APP_$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
-                    done
-                    ;;
-            esac    
             ;;
         "db")
+            env_vars=($(cat $CURRENT_DIR/$NAME/".env"))
             case $framework in 
                 "mongo")
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-mongo-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
@@ -274,7 +256,7 @@ build(){
     fi
 
     if [ "$docker_run" == "null" ]; then
-        yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+        yq e '.up.docker = "docker compose up --remove-orphans"' $CURRENT_DIR/$NAME/scaffold.yaml -i
         yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
         yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rmi $NAME > /dev/null 2>&1", "docker rmi ${docker_repo} > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
     fi

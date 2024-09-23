@@ -46,36 +46,39 @@ run_all(){
     manifest_data=$(yq e '.resources[] | .name + ":" + .type' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a manifest_data <<< "$manifest_data"
 
-    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
-    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+    if [ ${opts["--platform"]} == "local" ]; then
 
-    for project_info in "${manifest_data[@]}"; do
-        name=$(echo $project_info | cut -d ":" -f 1)
-        type=$(echo $project_info | cut -d ":" -f 2)
+        env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+        IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
-        if [ -z $name ]; then
-            default_helper
-            return 1
-        fi
+        for project_info in "${manifest_data[@]}"; do
+            name=$(echo $project_info | cut -d ":" -f 1)
+            type=$(echo $project_info | cut -d ":" -f 2)
 
-        if [ ! -f "$CURRENT_DIR/$name/scaffold.yaml" ]; then
-            print_error "$name is not a valid resource"
-            default_helper
-            return 1
-        fi
+            if [ -z $name ]; then
+                default_helper
+                return 1
+            fi
 
-        if [ -f $CURRENT_DIR/$name/".env" ]; then
-            env_vars+=($(cat $CURRENT_DIR/$name/".env"))
-        fi
-    done
+            if [ ! -f "$CURRENT_DIR/$name/scaffold.yaml" ]; then
+                print_error "$name is not a valid resource"
+                default_helper
+                return 1
+            fi
 
-    (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
-    for env_var in "${env_vars[@]}"; do
-        (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
-    done
+            if [ -f $CURRENT_DIR/$name/".env" ]; then
+                env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+            fi
+        done
 
-    (cd $CURRENT_DIR/env-api && docker compose up) &
-    pids+=($!:$name:kubefs:docker)
+        (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
+        for env_var in "${env_vars[@]}"; do
+            (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
+        done
+
+        (cd $CURRENT_DIR/env-api && docker compose up) &
+        pids+=($!:$name:kubefs:docker)
+    fi
 
     exit_flag=0
 
@@ -181,20 +184,22 @@ run_helper(){
         return 0
     fi
 
-    (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
-    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
-    IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
+    if [ "${opts["--platform"]}" == "local" ]; then
+        (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
+        env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+        IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
-    if [ -f $CURRENT_DIR/$name/".env" ]; then
-        env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+        if [ -f $CURRENT_DIR/$name/".env" ]; then
+            env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+        fi
+
+        for env_var in "${env_vars[@]}"; do
+            (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
+        done
+
+        (cd $CURRENT_DIR/env-api && docker compose up) &
+        pids+=($!:$name:kubefs:docker)
     fi
-
-    for env_var in "${env_vars[@]}"; do
-        (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
-    done
-
-    (cd $CURRENT_DIR/env-api && docker compose up) &
-    pids+=($!:$name:kubefs:docker)
 
     run_unique $name "${opts[@]}" & 
     pids+=($!:$name:$type:"${opts["--platform"]}")
