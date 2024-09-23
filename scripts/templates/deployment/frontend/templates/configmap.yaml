@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-config
+data:
+  traefik.yml: |
+    http:
+      routers:
+        frontend:
+          rule: "PathPrefix(`/`)"
+          service: frontend
+        backend:
+          rule: "PathPrefix(`/env`)"
+          service: backend
+      services:
+        frontend:
+          loadBalancer:
+            servers:
+              - url: "http://localhost:80"
+        backend:
+          loadBalancer:
+            servers:
+              - url: "http://localhost:8080"s
