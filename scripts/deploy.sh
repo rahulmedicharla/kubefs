@@ -114,12 +114,12 @@ helmify(){
             hostname=""
         fi
 
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/frontend-env.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-frontend-env/scripts/templates/deployment/frontend/*" -d /tmp
-        cp -r /tmp/kubefs-frontend-env/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-frontend-env
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/frontend/*" -d /tmp
+        cp -r /tmp/kubefs-main/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-main
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
             -i -e "s#{{IMAGE}}#${docker_repo}#" \
             -i -e "s#{{PORT}}#80#" \

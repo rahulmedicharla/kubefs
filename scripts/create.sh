@@ -356,7 +356,7 @@ create_frontend(){
         fi
 
         (cd $CURRENT_DIR/$NAME && jq '.scripts.start = "ng serve --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
-        (cd $CURRENT_DIR/$NAME && wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/local-frontend/template-angular-config.conf -O $CURRENT_DIR/$NAME/src/proxy.conf.json && jq '.projects["'$NAME'"].architect.serve.options.proxyConfig = "src/proxy.conf.json"' angular.json > tmp.json && mv tmp.json angular.json)
+        (cd $CURRENT_DIR/$NAME && wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-angular-config.conf -O $CURRENT_DIR/$NAME/src/proxy.conf.json && jq '.projects["'$NAME'"].architect.serve.options.proxyConfig = "src/proxy.conf.json"' angular.json > tmp.json && mv tmp.json angular.json)
         
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"main.ts\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"angular\""  $SCAFFOLD -i )
@@ -379,7 +379,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && npm i)
         (cd $CURRENT_DIR/$NAME && jq '.scripts.dev = "vite --port '${opts["--port"]}'"' package.json > tmp.json && mv tmp.json package.json)
 
-        (cd $CURRENT_DIR/$NAME && rm -rf vite.config.ts && wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/local-frontend/template-vite-config.conf -O $CURRENT_DIR/$NAME/vite.config.ts)
+        (cd $CURRENT_DIR/$NAME && rm -rf vite.config.ts && wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-vite-config.conf -O $CURRENT_DIR/$NAME/vite.config.ts)
 
         (cd $CURRENT_DIR/$NAME && touch $SCAFFOLD)
         (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"App.vue\" | .project.port = \"${opts["--port"]}\" | .project.type = \"frontend\" | .project.framework = \"vue\""  $SCAFFOLD -i )

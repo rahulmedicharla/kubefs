@@ -169,7 +169,7 @@ build(){
             esac
             ;;  
         "frontend")
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
             case "$framework" in
                 "angular")
                     sed -i -e "s#{{MEDIUM}}#COPY --from=builder /app/dist/$NAME/browser /usr/share/nginx/html#" \
@@ -185,7 +185,7 @@ build(){
                     ;;
             esac
 
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/frontend-env/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
             sed -i -e "s/{{HOST_PORT}}/$port/" \
                 -i -e "s/{{NAME}}/$NAME/" \
                 "$CURRENT_DIR/$NAME/docker-compose.yaml"
