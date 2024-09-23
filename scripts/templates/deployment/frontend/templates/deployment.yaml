@@ -37,7 +37,7 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: rmedicharla/env-kubefs-api:latest
-          environment:
+          env:
             {{- range .Values.env }}
             - name: {{ .name | quote }}
               value: {{ .value | quote }}
