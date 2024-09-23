@@ -8,8 +8,6 @@ data:
     entryPoints:
       web:
         address: ":8000"
-    ping:
-      address: ":8000"
     http:
       routers:
         frontend:
