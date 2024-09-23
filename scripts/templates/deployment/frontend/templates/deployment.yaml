@@ -33,27 +33,6 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: 60
       containers:
-        - name: backend
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: rmedicharla/env-kubefs-api:latest
-          env:
-            {{- range .Values.env }}
-            - name: {{ .name | quote }}
-              value: {{ .value | quote }}
-            {{- end }}
-            {{- range .Values.secrets }}
-            - name: {{ .name| quote }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .secretRef | quote }}
-                  key: {{ .name | quote }}
-            {{- end }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports: 
-            - name: http
-              containerPort: {{ .Values.service.port }}
-              protocol: TCP
         - name: frontend
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
@@ -73,6 +52,26 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        - name: backend
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: rmedicharla/env-kubefs-api:latest
+          env:
+            {{- range .Values.env }}
+            - name: {{ .name | quote }}
+              value: {{ .value | quote }}
+            {{- end }}
+            {{- range .Values.secrets }}
+            - name: {{ .name| quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretRef | quote }}
+                  key: {{ .name | quote }}
+            {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports: 
+              containerPort: 5000
+              protocol: TCP
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
