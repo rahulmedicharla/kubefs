@@ -28,12 +28,12 @@ init_project() {
     yq e ".kubefs-description = \"${DESCRIPTION}\"" -i manifest.yaml
     yq e ".resources = []" -i manifest.yaml
 
-    mkdir env-api
-    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/env-api/docker-compose.yaml
-    sed -i -e "s#{{PORT}}#5000#" \
-        -i -e "s#{{HOST_PORT}}#5000#" \
-        -i -e "s#{{NAME}}#rmedicharla/env-kubefs-api:latest#" \
-        "$CURRENT_DIR/env-api/docker-compose.yaml"
+    git clone https://github.com/rahulmedicharla/env-kubefs-api.git
+    if [ $? -ne 0 ]; then
+        print_error "Failed to clone env-kubefs-api"
+        return 1
+    fi
+    (cd $CURRENT_DIR/env-kubefs-api && rm -rf .git)
 
     print_success "Successfully created $COMMAND project!"
 }
