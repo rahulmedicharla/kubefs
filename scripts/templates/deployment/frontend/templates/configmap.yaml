@@ -14,7 +14,7 @@ data:
           rule: "PathPrefix(`/`)"
           service: frontend
         backend:
-          rule: "PathPrefix(`/env`)"
+          rule: "PathPrefix(`/env`) || PathPrefix(`/api`)"
           service: backend
       services:
         frontend:
