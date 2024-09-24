@@ -28,12 +28,10 @@ init_project() {
     yq e ".kubefs-description = \"${DESCRIPTION}\"" -i manifest.yaml
     yq e ".resources = []" -i manifest.yaml
 
-    git clone https://github.com/rahulmedicharla/env-kubefs-api.git
-    if [ $? -ne 0 ]; then
-        print_error "Failed to clone env-kubefs-api"
-        return 1
-    fi
-    (cd $CURRENT_DIR/env-kubefs-api && rm -rf .git)
+    wget https://github.com/rahulmedicharla/env-kubefs-api/archive/refs/heads/main.zip -O kubefs-api.zip
+    unzip kubefs-api.zip -d env-kubefs-api
+    mv env-kubefs-api/env-kubefs-api-main/* env-kubefs-api
+    rm -rf kubefs-api.zip env-kubefs-api/env-kubefs-api-main
 
     print_success "Successfully created $COMMAND project!"
 }
