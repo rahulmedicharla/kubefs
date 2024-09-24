@@ -3,5 +3,5 @@ build:
 	sudo cp -r scripts /usr/local/bin/scripts
 	sudo cp kubefs /usr/local/bin
 
-reset:
-	(cd .. && rm -rf tester && kubefs init tester && cd tester && kubefs create api test1)
+release-api:
+	zip -r kubefs-api.zip kubefs-api -x "kubefs-api/Dockerfile" "kubefs-api/docker-compose.yaml" "kubefs-api/.dockerignore"	
