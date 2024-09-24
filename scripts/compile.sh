@@ -128,7 +128,7 @@ build(){
                         -i -e "s/{{ENTRY}}/$entry/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
 
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/apirevproxy/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
                     sed -i -e "s/{{PORT}}/${port}/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
@@ -142,7 +142,7 @@ build(){
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/apirevproxy/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
                     sed -i -e "s/{{PORT}}/${port}/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
@@ -158,7 +158,7 @@ build(){
                         -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
 
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/apirevproxy/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
                     sed -i -e "s/{{PORT}}/${port}/" \
                         -i -e "s/{{HOST_PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
@@ -185,7 +185,7 @@ build(){
                     ;;
             esac
 
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/apirevproxy/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
             sed -i -e "s/{{HOST_PORT}}/$port/" \
                 -i -e "s/{{NAME}}/$NAME/" \
                 "$CURRENT_DIR/$NAME/docker-compose.yaml"
