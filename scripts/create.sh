@@ -200,6 +200,7 @@ create_db(){
     fi
 
     local_host=localhost
+    docker_host=$NAME-container-1
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
@@ -210,7 +211,7 @@ create_db(){
             (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"db\" | .project.framework=\"mongo\"" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "$docker_host" "${cluster_host}" $sanitized_name
         ;;
         *)
             mkdir $CURRENT_DIR/$NAME
@@ -218,7 +219,7 @@ create_db(){
             (cd $CURRENT_DIR/$NAME && yq e ".env = []" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e ".project.name = \"$NAME\" | .project.entry = \"${opts["--entry"]}\" | .project.port = \"${opts["--port"]}\" | .project.type = \"db\" | .project.framework=\"cassandra\"" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
-            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "${cluster_host}" $sanitized_name
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "" db "$local_host" "$docker_host" "${cluster_host}" $sanitized_name
         ;;
     esac
     return 0
@@ -240,6 +241,7 @@ create_api() {
 
     
     local_host=localhost
+    docker_host=$NAME-container-1
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
@@ -263,7 +265,7 @@ create_api() {
             (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"source venv/bin/activate && uvicorn main:app --port ${opts["--port"]}\"" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "source venv/bin/activate && uvicorn main:app --port ${opts["--port"]}" api "$local_host" "${cluster_host}" $sanitized_name
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "source venv/bin/activate && uvicorn main:app --port ${opts["--port"]}" api "$local_host" "$docker_host" "${cluster_host}" $sanitized_name
 
         ;;
         "go") 
@@ -286,7 +288,7 @@ create_api() {
             (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"go run ${opts["--entry"]}.go\"" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}.go" api "$local_host" "${cluster_host}" $sanitized_name        
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "go run ${opts["--entry"]}.go" api "$local_host" "$docker_host" "${cluster_host}" $sanitized_name        
         ;;
         *)
             mkdir $CURRENT_DIR/$NAME
@@ -315,7 +317,7 @@ create_api() {
             (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"nodemon ${opts["--entry"]}.js\"" $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
             (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}.js" api "$local_host" "${cluster_host}" $sanitized_name        
+            append_to_manifest $NAME "${opts["--entry"]}" "${opts["--port"]}" "nodemon ${opts["--entry"]}.js" api "$local_host" "$docker_host" "${cluster_host}" $sanitized_name        
         ;;
     esac
     return 0
@@ -336,6 +338,7 @@ create_frontend(){
     fi
     
     local_host=localhost
+    docker_host=$NAME-frontend-1
     cluster_host=$NAME-deployment.$NAME.svc.cluster.local
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
 
@@ -364,7 +367,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run start\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "main.ts" "${opts["--port"]}" "npm run start" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "main.ts" "${opts["--port"]}" "npm run start" frontend "$local_host" "$docker_host" "${cluster_host}" $sanitized_name
 
     elif [ ${opts["--framework"]} == "vue" ]; then
         npm create vue@latest $NAME -- --typescript
@@ -387,7 +390,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm run dev\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "App.vue" "${opts["--port"]}" "npm run dev" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "App.vue" "${opts["--port"]}" "npm run dev" frontend "$local_host" "$docker_host" "${cluster_host}" $sanitized_name
     else
         (npx create-react-app@latest $NAME --no-git --template typescript)
         (cd $CURRENT_DIR/$NAME && rm -rf .git)
@@ -404,7 +407,7 @@ create_frontend(){
         (cd $CURRENT_DIR/$NAME && yq e ".up.local = \"npm start\"" $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.local = ["rm -rf $CURRENT_DIR/$NAME", "remove_from_manifest $NAME"]' $SCAFFOLD -i)
         (cd $CURRENT_DIR/$NAME && yq e '.remove.remote = ["remove_repo $NAME"]' $SCAFFOLD -i)
-        append_to_manifest $NAME "App.tsx" "${opts["--port"]}" "npm start" frontend "$local_host" "${cluster_host}" $sanitized_name
+        append_to_manifest $NAME "App.tsx" "${opts["--port"]}" "npm start" frontend "$local_host" "$docker_host" "${cluster_host}" $sanitized_name
 
     fi
 

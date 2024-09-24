@@ -54,7 +54,7 @@ helmify(){
     entry=$(yq e '.project.entry' $CURRENT_DIR/$NAME/scaffold.yaml)
     framework=$(yq e '.project.framework' $CURRENT_DIR/$NAME/scaffold.yaml)
 
-    env_vars=$(yq e '.resources[].env-remote[]' $CURRENT_DIR/manifest.yaml)
+    env_vars=$(yq e '.resources[].remote[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     secrets=()
