@@ -1,4 +1,4 @@
-module env-kubefs-api
+module kubefs-api
 
 go 1.23.1
 

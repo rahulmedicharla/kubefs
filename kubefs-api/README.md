@@ -1,4 +1,4 @@
-# Welcome to the env-kubefs-api
+# Welcome to the kubefs-api
 
 ## This api is meant to be used as a backend service for frontend applications served in kubernetes
 

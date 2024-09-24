@@ -71,12 +71,12 @@ run_all(){
             fi
         done
 
-        (cd $CURRENT_DIR/env-kubefs-api && rm .env 2>/dev/null && touch .env)
+        (cd $CURRENT_DIR/kubefs-api && rm .env 2>/dev/null && touch .env)
         for env_var in "${env_vars[@]}"; do
-            (cd $CURRENT_DIR/env-kubefs-api && echo $env_var >> .env)
+            (cd $CURRENT_DIR/kubefs-api && echo $env_var >> .env)
         done
 
-        (cd $CURRENT_DIR/env-kubefs-api && go run .) &
+        (cd $CURRENT_DIR/kubefs-api && go run .) &
         pids+=($!:$name:kubefs:local)
     fi
 
@@ -199,12 +199,12 @@ run_helper(){
             env_vars+=($(cat $CURRENT_DIR/$name/".env"))
         fi
 
-        (cd $CURRENT_DIR/env-kubefs-api && rm .env 2>/dev/null && touch .env)
+        (cd $CURRENT_DIR/kubefs-api && rm .env 2>/dev/null && touch .env)
         for env_var in "${env_vars[@]}"; do
-            (cd $CURRENT_DIR/env-kubefs-api && echo $env_var >> .env)
+            (cd $CURRENT_DIR/kubefs-api && echo $env_var >> .env)
         done
 
-        (cd $CURRENT_DIR/env-kubefs-api && go run .) &
+        (cd $CURRENT_DIR/kubefs-api && go run .) &
         pids+=($!:$name:kubefs:local)
     fi
 

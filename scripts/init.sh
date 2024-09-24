@@ -28,10 +28,9 @@ init_project() {
     yq e ".kubefs-description = \"${DESCRIPTION}\"" -i manifest.yaml
     yq e ".resources = []" -i manifest.yaml
 
-    wget https://github.com/rahulmedicharla/env-kubefs-api/archive/refs/heads/main.zip -O kubefs-api.zip
-    unzip kubefs-api.zip -d env-kubefs-api
-    mv env-kubefs-api/env-kubefs-api-main/* env-kubefs-api
-    rm -rf kubefs-api.zip env-kubefs-api/env-kubefs-api-main
+    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/kubefs-api.zip
+    unzip kubefs-api.zip
+    rm kubefs-api.zip
 
     print_success "Successfully created $COMMAND project!"
 }
