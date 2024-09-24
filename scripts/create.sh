@@ -178,8 +178,7 @@ create_helper_func() {
     print_success "$NAME created successfully!"
     echo ""
     echo "To start the project use 'kubefs run $NAME'"
-    echo ""
-    print_warning "To utilize environment variables, create a .env file in the project directory - fetch using fetch("http://localhost:5000/env/\$ENV_NAME")"
+    print_warning "To utilize environment variables, populate a .env file in the $NAME directory && consume it in code using fetch("/env/{VARIABLE_NAME}")"
     echo ""
 
     return 0
