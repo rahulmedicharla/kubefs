@@ -48,7 +48,7 @@ run_all(){
 
     if [ ${opts["--platform"]} == "local" ]; then
 
-        env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+        env_vars=$(yq e '.resources[].local[]' $CURRENT_DIR/manifest.yaml)
         IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
         for project_info in "${manifest_data[@]}"; do
@@ -71,13 +71,20 @@ run_all(){
             fi
         done
 
-        (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
+        (cd $CURRENT_DIR/env-kubefs-api && rm .env 2>/dev/null && touch .env)
         for env_var in "${env_vars[@]}"; do
-            (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
+            (cd $CURRENT_DIR/env-kubefs-api && echo $env_var >> .env)
         done
 
-        (cd $CURRENT_DIR/env-api && docker compose up) &
-        pids+=($!:$name:kubefs:docker)
+        (cd $CURRENT_DIR/env-kubefs-api && go run .) &
+        pids+=($!:$name:kubefs:local)
+    fi
+
+    if [ "${opts["--platform"]}" == "docker" ]; then
+        if ! docker network ls | grep -q "shared_network"; then
+            print_warning "Creating shared_network"
+            docker network create shared_network
+        fi
     fi
 
     exit_flag=0
@@ -185,20 +192,27 @@ run_helper(){
     fi
 
     if [ "${opts["--platform"]}" == "local" ]; then
-        (cd $CURRENT_DIR/env-api && yq e 'del(.services.container.environment)' -i docker-compose.yaml && yq e '.services.container.environment = []' -i docker-compose.yaml)
-        env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+        env_vars=$(yq e '.resources[].local[]' $CURRENT_DIR/manifest.yaml)
         IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
         if [ -f $CURRENT_DIR/$name/".env" ]; then
             env_vars+=($(cat $CURRENT_DIR/$name/".env"))
         fi
 
+        (cd $CURRENT_DIR/env-kubefs-api && rm .env 2>/dev/null && touch .env)
         for env_var in "${env_vars[@]}"; do
-            (cd $CURRENT_DIR/env-api && yq e '.services.container.environment += ["'$env_var'"]' -i docker-compose.yaml)
+            (cd $CURRENT_DIR/env-kubefs-api && echo $env_var >> .env)
         done
 
-        (cd $CURRENT_DIR/env-api && docker compose up) &
-        pids+=($!:$name:kubefs:docker)
+        (cd $CURRENT_DIR/env-kubefs-api && go run .) &
+        pids+=($!:$name:kubefs:local)
+    fi
+
+    if [ "${opts["--platform"]}" == "docker" ]; then
+        if ! docker network ls | grep -q "shared_network"; then
+            print_warning "Creating shared_network"
+            docker network create shared_network
+        fi
     fi
 
     run_unique $name "${opts[@]}" & 
@@ -223,7 +237,7 @@ cleanup(){
             platform=$(echo $pid_info | cut -d ":" -f 4)
 
             if [ "$type" == "kubefs" ]; then
-                (cd $CURRENT_DIR/env-api && docker compose down 2>/dev/null)
+                kill $pid 2>/dev/null
                 continue
             fi
 

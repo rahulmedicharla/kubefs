@@ -108,7 +108,7 @@ build(){
     docker_run=$(yq e '.up.docker' $CURRENT_DIR/$NAME/scaffold.yaml)
     framework=$(yq e '.project.framework' $CURRENT_DIR/$NAME/scaffold.yaml)
     
-    env_vars=$(yq e '.resources[].env[]' $CURRENT_DIR/manifest.yaml)
+    env_vars=$(yq e '.resources[].docker[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     if [ -f $CURRENT_DIR/$name/".env" ]; then
@@ -198,7 +198,6 @@ build(){
             (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
             ;;
         "db")
-            env_vars=($(cat $CURRENT_DIR/$NAME/".env"))
             case $framework in 
                 "mongo")
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-db/template-mongo-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml

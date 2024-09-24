@@ -27,14 +27,15 @@ append_to_manifest() {
     COMMAND=$4
     TYPE=$5
     ADDRESS_LOCAL=$6
-    ADDRESS_CLUSTER=$7
-    UPPERCASE_NAME=$8
+    ADDRESS_DOCKER=$7   
+    ADDRESS_CLUSTER=$8
+    UPPERCASE_NAME=$9
 
     sanitized_host=${UPPERCASE_NAME}_HOST
     sanitized_port=${UPPERCASE_NAME}_PORT
     print_warning "Use \"$sanitized_host\": \"$sanitized_port\" to access to access this resource."
 
-    yq e ".resources += [{\"name\": \"$NAME\", \"entry\": \"$ENTRY\", \"port\": \"$PORT\", \"command\": \"$COMMAND\", \"type\": \"$TYPE\", \"env\": [\"$sanitized_host=$ADDRESS_LOCAL\", \"$sanitized_port=$PORT\"], \"env-remote\": [\"$sanitized_host=$ADDRESS_CLUSTER\", \"$sanitized_port=$PORT\"]}]" -i  $CURRENT_DIR/manifest.yaml
+    yq e ".resources += [{\"name\": \"$NAME\", \"entry\": \"$ENTRY\", \"port\": \"$PORT\", \"command\": \"$COMMAND\", \"type\": \"$TYPE\", \"local\": [\"$sanitized_host=$ADDRESS_LOCAL\", \"$sanitized_port=$PORT\"], \"docker\": [\"$sanitized_host=$ADDRESS_DOCKER\", \"$sanitized_port=$PORT\"], \"remote\": [\"$sanitized_host=$ADDRESS_CLUSTER\", \"$sanitized_port=$PORT\"]}]" -i  $CURRENT_DIR/manifest.yaml
 }
 
 remove_from_manifest(){
