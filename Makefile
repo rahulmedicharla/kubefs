@@ -3,5 +3,5 @@ build:
 	sudo cp -r scripts /usr/local/bin/scripts
 	sudo cp kubefs /usr/local/bin
 
-reset:
-	(cd .. && rm -rf tester && kubefs init tester && cd tester && kubefs create api test1)
+release-api:
+	zip kubefs-api.zip kubefs-api/main.go kubefs-api/go.mod kubefs-api/go.sum kubefs-api/README.md
