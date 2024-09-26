@@ -174,14 +174,14 @@ create_helper_func() {
             ;;
     esac
 
+    client_secret=$(openssl rand -hex 16)
+    yq e ".project.client-secret = \"$client_secret\"" -i "`pwd`/$NAME/scaffold.yaml"
+
     echo ""
     print_success "$NAME created successfully!"
     echo ""
     echo "To start the project use 'kubefs run $NAME'"
-    print_warning "To utilize environment variables, populate a .env file in the $NAME directory"
-    if [ ${opts["--type"]} == "frontend" ]; then
-        print_warning "consume them in code using fetch("/env/{VARIABLE_NAME}")"
-    fi
+    print_warning "To utilize environment variables, populate a .env file in the $NAME directory && if frontend, consume then using fetch('/env/{VARIABLE_NAME}')"
     echo ""
 
     return 0
@@ -240,7 +240,6 @@ create_api() {
         print_warning "Port ${opts["--port"]} is already in use, please use a different port"
         return 1
     fi
-
     
     local_host=localhost
     docker_host=$NAME-traefik-1

@@ -107,6 +107,8 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, fmt.Sprintf("{\"error\": \"%s\"}", err.Error()), http.StatusBadRequest)
         return
     }
+
+    fmt.Println(fmt.Sprintf("apiHandler: response from %s :  %s", url, time.Now().Format("2006-01-02 15:04:05")))
     
     w.Header().Set("Content-Type", "application/json")
     w.Write(body)

@@ -115,6 +115,9 @@ build(){
         env_vars+=($(cat $CURRENT_DIR/$name/".env"))
     fi
 
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+    client_secret=$(yq e '.project.client-secret' $CURRENT_DIR/$NAME/scaffold.yaml)
+
     case "$type" in
         "api")
             case "$framework" in
@@ -158,14 +161,20 @@ build(){
                 "$CURRENT_DIR/$NAME/docker-compose.yaml"
 
             yq e '.services.auth.environment = []' $CURRENT_DIR/$NAME/docker-compose.yaml -i
-            client_id_list=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
-            IFS=$'\n' read -r -d '' -a client_id_list <<< "$client_id_list"
+            auth_client_list=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+            IFS=$'\n' read -r -d '' -a auth_client_list <<< "$auth_client_list"
 
-            for client_id in "${client_id_list[@]}"; do
-                sanitized_name=$(echo $client_id | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+            for client_id in "${auth_client_list[@]}"; do
+                sanitized_client=$(echo $client_id | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
                 secret=$(yq e ".project.client-secret" $CURRENT_DIR/$client_id/scaffold.yaml)
-                yq e ".services.auth.environment += [\"$sanitized_name=$secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+                yq e ".services.auth.environment += [\"$sanitized_client=$secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done
+
+            yq e '.services.api.environment = []' $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            for env in "${env_vars[@]}"; do
+                yq e ".services.api.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            done
+            yq e ".services.api.environment += [\"CLIENT_ID=$sanitized_name\", \"CLIENT_SECRET=$client_secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
 
             ;;  
         "frontend")
@@ -184,9 +193,6 @@ build(){
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     ;;
             esac
-
-            sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
-            client_secret=$(yq e '.project.client-secret' $CURRENT_DIR/$NAME/scaffold.yaml)
 
             wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/auth/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
             sed -i -e "s/{{HOST_PORT}}/$port/" \

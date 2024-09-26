@@ -21,26 +21,32 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
     client_id, err := base64.StdEncoding.DecodeString(r.Header.Get("X-CLIENT-ID"))
     if err != nil {
+        fmt.Println("Error decoding client_id %s", err)
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
         return
     }
 
     client_secret, err := base64.StdEncoding.DecodeString(r.Header.Get("X-CLIENT-SECRET"))
     if err != nil {
+        fmt.Println("Error decoding client_secret %s", err)
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
         return
     }
 
     if string(client_id) == "" || string(client_secret) == "" {
+        fmt.Println("Client_id or client_secret is empty")
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
         return
     }
 
     env := os.Getenv(string(client_id))
     if env == "" || env != string(client_secret) {
+        fmt.Println("Client_id or client_secret is invalid")
         http.Error(w, "Unauthorized", http.StatusUnauthorized)
         return
     }
+
+    fmt.Println("Authorized... %s", time.Now().Format("2006-01-02 15:04:05"))
 
     w.WriteHeader(http.StatusOK)
 
