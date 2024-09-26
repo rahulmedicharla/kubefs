@@ -10,6 +10,7 @@ import (
     "bytes"
     "github.com/joho/godotenv"
     "encoding/base64"
+    "time"
 )
 
 type ApiRequest struct {
@@ -28,6 +29,7 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getEnvHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Println(fmt.Sprintf("envHandler: %s", time.Now().Format("2006-01-02 15:04:05")))
     vars := mux.Vars(r)
     key := vars["key"]
     value := os.Getenv(key)
@@ -43,7 +45,7 @@ func getEnvHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func apiHandler(w http.ResponseWriter, r *http.Request) {
-
+    fmt.Println(fmt.Sprintf("apiHandler: %s", time.Now().Format("2006-01-02 15:04:05")))
     body, err := ioutil.ReadAll(r.Body)
     if err != nil {
         fmt.Println(err)
@@ -59,9 +61,12 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, fmt.Sprintf("{\"error\": \"%s\"}", err.Error()), http.StatusBadRequest)
         return
     }
-
+    
     client := &http.Client{}
     url := fmt.Sprintf("%s:%s/auth%s", forward.Url, forward.Port, forward.Path)
+    
+    fmt.Println(fmt.Sprintf("apiHandler: request to %s :  %s", url, time.Now().Format("2006-01-02 15:04:05")))
+    
     req, err := http.NewRequest(forward.Method, url, bytes.NewBuffer([]byte(forward.Body)))
     if err != nil {
         fmt.Println(err)
