@@ -133,12 +133,12 @@ helmify(){
 
     helmify_api(){
         NAME=$1
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/api/*" -d /tmp
-        cp -r /tmp/kubefs-main/scripts/templates/deployment/api $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-main
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/auth.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-auth/scripts/templates/deployment/api/*" -d /tmp
+        cp -r /tmp/kubefs-auth/scripts/templates/deployment/api $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-auth
 
-        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
+        wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/auth/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
             -i -e "s#{{IMAGE}}#${docker_repo}#" \
             -i -e "s#{{PORT}}#$port#" \
@@ -148,7 +148,14 @@ helmify(){
             -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
-        
+        client_id_list=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+        IFS=$'\n' read -r -d '' -a client_id_list <<< "$client_id_list"
+
+        for client_id in "${client_id_list[@]}"; do
+            sanitized_name=$(echo $client_id | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+            secret=$(yq e ".project.client-secret" $CURRENT_DIR/$client_id/scaffold.yaml)
+            yq e ".kubefsAuth.secrets += [{\"name\" : \"$sanitized_name\", \"value\": \"$secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        done
     }
     
     case "$type" in
