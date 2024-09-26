@@ -86,10 +86,7 @@ spec:
           env:
             {{- range .Values.kubefsAuth.secrets }}
             - name: {{ .name| quote }}
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .secretRef | quote }}
-                  key: {{ .name | quote }}
+              value: {{ .value | quote }}
             {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports: 
