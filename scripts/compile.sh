@@ -212,7 +212,7 @@ build(){
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
 
                     if [ "$docker_run" == "null" ]; then
-                        yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                        yq e '.up.docker = "docker compose up --remove-orphans"' $CURRENT_DIR/$NAME/scaffold.yaml -i
                         yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
                         yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rm $NAME-setup-1 > /dev/null 2>&1", "docker volume rm ${NAME}_mongo_data > /dev/null 2>&1", "docker network rm ${NAME}_mongo_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
                     fi
@@ -231,7 +231,7 @@ build(){
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo ".env" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     
                     if [ "$docker_run" == "null" ]; then
-                        yq e '.up.docker = "docker compose up"' $CURRENT_DIR/$NAME/scaffold.yaml -i
+                        yq e '.up.docker = "docker compose up --remove-orphans"' $CURRENT_DIR/$NAME/scaffold.yaml -i
                         yq e '.down.docker = "docker compose down"' $CURRENT_DIR/$NAME/scaffold.yaml -i
                         yq e '.remove.docker += ["docker rm $NAME-container-1 > /dev/null 2>&1", "docker rm $NAME-setup-1 > /dev/null 2>&1", "docker volume rm ${NAME}_cassandra_data > /dev/null 2>&1", "docker network rm ${NAME}_cassandra_network > /dev/null 2>&1"]' $CURRENT_DIR/$NAME/scaffold.yaml -i
                     fi

@@ -82,7 +82,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
     CLIENT_SECRET := os.Getenv("CLIENT_SECRET")
 
     if CLIENT_ID == "" || CLIENT_SECRET == "" {
-        http.Error(w, "Unvalid client credentials", http.StatusUnauthorized)
+        http.Error(w, "Invalid client credentials", http.StatusUnauthorized)
         return
     }
     

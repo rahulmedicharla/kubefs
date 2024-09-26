@@ -25,7 +25,7 @@ validate_port(){
     IFS=$'\n' read -r -d '' -a ports <<< "$ports"
 
     for port in "${ports[@]}"; do
-        if [ "$port" == "$CASE" -o "$port" == "5000" ]; then
+        if [ "$port" == "$CASE" -o "$port" == "5000" -o "$port" == "6000" -o "$port" == "8000" ]; then
             return 1
         fi
     done

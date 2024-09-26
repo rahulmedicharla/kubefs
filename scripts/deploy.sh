@@ -62,6 +62,9 @@ helmify(){
         secrets+=($(cat $CURRENT_DIR/$NAME/".env"))
     fi
 
+    sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+    client_secret=$(yq e ".project.client-secret" $CURRENT_DIR/$NAME/scaffold.yaml)
+
     if [ "$docker_run" == "null" ]; then
         print_warning "Docker Image is not built for $NAME component. Please build and push the image"
         return 1
@@ -114,10 +117,10 @@ helmify(){
             hostname=""
         fi
 
-        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/main.zip -O /tmp/repo.zip
-        unzip -o /tmp/repo.zip "kubefs-main/scripts/templates/deployment/frontend/*" -d /tmp
-        cp -r /tmp/kubefs-main/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
-        rm -rf /tmp/repo.zip /tmp/kubefs-main
+        wget https://github.com/rahulmedicharla/kubefs/archive/refs/heads/auth.zip -O /tmp/repo.zip
+        unzip -o /tmp/repo.zip "kubefs-auth/scripts/templates/deployment/frontend/*" -d /tmp
+        cp -r /tmp/kubefs-auth/scripts/templates/deployment/frontend $CURRENT_DIR/$NAME/deploy
+        rm -rf /tmp/repo.zip /tmp/kubefs-auth
 
         wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/helm-values.conf -O "$CURRENT_DIR/$NAME/deploy/values.yaml"
         sed -i -e "s#{{NAME}}#$NAME#" \
@@ -127,8 +130,7 @@ helmify(){
             -i -e "s#{{SERVICE_TYPE}}#LoadBalancer#" \
             -i -e "s#{{ENTRY}}#$entry#" \
             -i -e "s#{{HOST}}#$hostname#" \
-            "$CURRENT_DIR/$NAME/deploy/values.yaml"
-        
+            "$CURRENT_DIR/$NAME/deploy/values.yaml"       
     }
 
     helmify_api(){
@@ -148,13 +150,13 @@ helmify(){
             -i -e "s#{{HOST}}#\"\"#" \
             "$CURRENT_DIR/$NAME/deploy/values.yaml"
         
-        client_id_list=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
-        IFS=$'\n' read -r -d '' -a client_id_list <<< "$client_id_list"
+        client_list=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+        IFS=$'\n' read -r -d '' -a client_list <<< "$client_list"
 
-        for client_id in "${client_id_list[@]}"; do
-            sanitized_name=$(echo $client_id | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
-            secret=$(yq e ".project.client-secret" $CURRENT_DIR/$client_id/scaffold.yaml)
-            yq e ".kubefsAuth.secrets += [{\"name\" : \"$sanitized_name\", \"value\": \"$secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+        for client in "${client_list[@]}"; do
+            sanitized_client_name=$(echo $client | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+            secret=$(yq e ".project.client-secret" $CURRENT_DIR/$client/scaffold.yaml)
+            yq e ".kubefsAuth.secrets += [{\"name\" : \"$sanitized_client_name\", \"value\": \"$secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
         done
     }
     
@@ -168,6 +170,9 @@ helmify(){
         IFS='=' read -r -a env_parts <<< "$env"
         yq e ".env += [{\"name\" : \"${env_parts[0]}\", \"value\": \"${env_parts[1]}\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
     done
+
+    yq e ".env += [{\"name\" : \"CLIENT_ID\", \"value\": \"$sanitized_name\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
+    yq e ".env += [{\"name\" : \"CLIENT_SECRET\", \"value\": \"$client_secret\"}]" $CURRENT_DIR/$NAME/deploy/values.yaml -i
 
     if [ ${#secrets[@]} -gt 0 ]; then
         wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/deployment/shared/template-secret.conf -O $CURRENT_DIR/$NAME/deploy/templates/secret.yaml
