@@ -9,6 +9,7 @@ import (
     "io/ioutil"
     "bytes"
     "github.com/joho/godotenv"
+    "encoding/base64"
 )
 
 type ApiRequest struct {
@@ -60,7 +61,7 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     client := &http.Client{}
-    url := fmt.Sprintf("%s:%s%s", forward.Url, forward.Port, forward.Path)
+    url := fmt.Sprintf("%s:%s/auth%s", forward.Url, forward.Port, forward.Path)
     req, err := http.NewRequest(forward.Method, url, bytes.NewBuffer([]byte(forward.Body)))
     if err != nil {
         fmt.Println(err)
@@ -71,6 +72,20 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
     for key, value := range forward.Headers {
         req.Header.Set(key, value)
     }
+
+    CLIENT_ID := os.Getenv("CLIENT_ID")
+    CLIENT_SECRET := os.Getenv("CLIENT_SECRET")
+
+    if CLIENT_ID == "" || CLIENT_SECRET == "" {
+        http.Error(w, "Unvalid client credentials", http.StatusUnauthorized)
+        return
+    }
+    
+    encodedClientID := base64.StdEncoding.EncodeToString([]byte(CLIENT_ID))
+    encodedClientSecret := base64.StdEncoding.EncodeToString([]byte(CLIENT_SECRET))
+
+    req.Header.Set("X-CLIENT-ID", encodedClientID)
+    req.Header.Set("X-CLIENT-SECRET", encodedClientSecret)
 
     resp, err := client.Do(req)
     if err != nil {

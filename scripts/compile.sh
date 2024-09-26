@@ -127,12 +127,6 @@ build(){
                         -i -e "s/{{PORT}}/$port/" \
                         -i -e "s/{{ENTRY}}/$entry/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
-
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        -i -e "s/{{HOST_PORT}}/${port}/" \
-                        -i -e "s/{{NAME}}/$NAME/" \
-                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
                             
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore && echo "venv/" >> .dockerignore && echo "__pycache__" >> .dockerignore)
                     ;;
@@ -142,12 +136,6 @@ build(){
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                     
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        -i -e "s/{{HOST_PORT}}/${port}/" \
-                        -i -e "s/{{NAME}}/$NAME/" \
-                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
-
                             
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
@@ -158,15 +146,27 @@ build(){
                         -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
 
-                    wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/shared/template-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
-                    sed -i -e "s/{{PORT}}/${port}/" \
-                        -i -e "s/{{HOST_PORT}}/${port}/" \
-                        -i -e "s/{{NAME}}/$NAME/" \
-                        "$CURRENT_DIR/$NAME/docker-compose.yaml"
         
                     (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
             esac
+
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/auth/scripts/templates/local-api/template-api-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            sed -i -e "s/{{PORT}}/${port}/" \
+                -i -e "s/{{HOST_PORT}}/${port}/" \
+                -i -e "s/{{NAME}}/$NAME/" \
+                "$CURRENT_DIR/$NAME/docker-compose.yaml"
+
+            yq e '.services.auth.environment = []' $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            client_id_list=$(yq e '.resources[].name' $CURRENT_DIR/manifest.yaml)
+            IFS=$'\n' read -r -d '' -a client_id_list <<< "$client_id_list"
+
+            for client_id in "${client_id_list[@]}"; do
+                sanitized_name=$(echo $client_id | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+                secret=$(yq e ".project.client-secret" $CURRENT_DIR/$client_id/scaffold.yaml)
+                yq e ".services.auth.environment += [\"$sanitized_name=$secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+            done
+
             ;;  
         "frontend")
             wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile
@@ -185,7 +185,10 @@ build(){
                     ;;
             esac
 
-            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
+            sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
+            client_secret=$(yq e '.project.client-secret' $CURRENT_DIR/$NAME/scaffold.yaml)
+
+            wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/auth/scripts/templates/local-frontend/template-frontend-compose.conf -O $CURRENT_DIR/$NAME/docker-compose.yaml
             sed -i -e "s/{{HOST_PORT}}/$port/" \
                 -i -e "s/{{NAME}}/$NAME/" \
                 "$CURRENT_DIR/$NAME/docker-compose.yaml"
@@ -194,7 +197,8 @@ build(){
             for env in "${env_vars[@]}"; do
                 yq e ".services.backend.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done
-            
+            yq e ".services.backend.environment += [\"CLIENT_ID=$sanitized_name\", \"CLIENT_SECRET=$client_secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
+
             (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
             ;;
         "db")
