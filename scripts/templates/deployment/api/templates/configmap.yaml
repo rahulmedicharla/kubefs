@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-config
+  namespace: {{ .Values.namespace }}
+data:
+   dynamic.yaml: |
+    entryPoints:
+      web:
+        address: ":80"
+    http:
+      routers:
+        container:
+          rule: "PathPrefix(`/auth/`)"
+          service: container
+          middlewares:
+            - auth-middleware
+            - strip-auth-prefix
+      services:
+        container:
+          loadBalancer:
+            servers:
+              - url: "http://localhost:{{ .Values.service.port }}"
+      middlewares:
+        auth-middleware:
+          forwardAuth:
+            address: "http://localhost:{{ .Values.kubefsAuth.port }}/auth"
+            authResponseHeaders:
+              - "*"
+        strip-auth-prefix:
+          stripPrefix:
+            prefixes:
+              - "/auth"

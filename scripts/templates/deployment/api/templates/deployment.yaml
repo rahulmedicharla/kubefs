@@ -33,7 +33,22 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       terminationGracePeriodSeconds: 60
       containers:
-        - name: {{ .Chart.Name }}
+        - name: traefik
+          image: traefik:latest
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+              protocol: TCP
+              name: web
+          args:
+            - --api.dashboard=true
+            - --entrypoints.web.address=:80
+            - --providers.file.directory=/config
+          {{- with .Values.kubefsAuth.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        - name: container
           env:
             {{- range .Values.env }}
             - name: {{ .name | quote }}
@@ -64,6 +79,26 @@ spec:
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        - name: auth
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: rmedicharla/kubefs-auth:latest
+          env:
+            {{- range .Values.kubefsAuth.secrets }}
+            - name: {{ .name| quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretRef | quote }}
+                  key: {{ .name | quote }}
+            {{- end }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports: 
+            - containerPort: {{ .Values.kubefsAuth.port }}
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.kubefsAuth.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.kubefsAuth.readinessProbe | nindent 12 }}
       {{- with .Values.volumes }}
       volumes:
         {{- toYaml . | nindent 8 }}
