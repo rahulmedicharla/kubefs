@@ -7,7 +7,7 @@ data:
    dynamic.yaml: |
     entryPoints:
       web:
-        address: ":80"
+        address: ":8000"
     http:
       routers:
         api:

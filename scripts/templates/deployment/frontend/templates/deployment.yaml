@@ -37,12 +37,12 @@ spec:
           image: traefik:latest
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: 80
+            - containerPort: 8000
               protocol: TCP
               name: web
           args:
             - --api.dashboard=true
-            - --entrypoints.web.address=:80
+            - --entrypoints.web.address=:8000
             - --providers.file.directory=/config
           {{- with .Values.kubefsEnv.volumeMounts }}
           volumeMounts:
