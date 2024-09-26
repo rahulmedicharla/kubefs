@@ -37,18 +37,18 @@ spec:
           image: traefik:latest
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: 8000
+            - containerPort: 80
               protocol: TCP
               name: web
           args:
             - --api.dashboard=true
-            - --entrypoints.web.address=:8000
+            - --entrypoints.web.address=:80
             - --providers.file.directory=/config
           {{- with .Values.kubefsAuth.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-        - name: container
+        - name: api
           env:
             {{- range .Values.env }}
             - name: {{ .name | quote }}
@@ -82,7 +82,7 @@ spec:
         - name: auth
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: rmedicharla/kubefs-auth:latest
+          image: rmedicharla/kubefs-auth:prod
           env:
             {{- range .Values.kubefsAuth.secrets }}
             - name: {{ .name| quote }}

@@ -7,17 +7,17 @@ data:
    dynamic.yaml: |
     entryPoints:
       web:
-        address: ":8000"
+        address: ":80"
     http:
       routers:
-        container:
+        api:
           rule: "PathPrefix(`/auth/`)"
-          service: container
+          service: api
           middlewares:
             - auth-middleware
             - strip-auth-prefix
       services:
-        container:
+        api:
           loadBalancer:
             servers:
               - url: "http://localhost:{{ .Values.service.port }}"
