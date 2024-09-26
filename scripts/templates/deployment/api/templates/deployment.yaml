@@ -96,8 +96,11 @@ spec:
             {{- toYaml .Values.kubefsAuth.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.kubefsAuth.readinessProbe | nindent 12 }}
-      {{- with .Values.volumes }}
       volumes:
+      {{- with .Values.kubefsAuth.volumes}}  
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.volumes}}
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.nodeSelector }}
