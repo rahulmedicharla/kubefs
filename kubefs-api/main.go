@@ -15,8 +15,7 @@ import (
 
 type ApiRequest struct {
     Method string `json:"method"`
-    Url string `json:"url"`
-    Port string `json:"port"`
+    Api string `json:"api"`
     Headers map[string]string `json:"headers"`
     Path string `json:"path"`
     Body string `json:"body"`
@@ -24,22 +23,6 @@ type ApiRequest struct {
 
 func healthHandler(w http.ResponseWriter, r *http.Request) {
     response := map[string]string{"status": "ok"}
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(response)
-}
-
-func getEnvHandler(w http.ResponseWriter, r *http.Request) {
-    fmt.Println(fmt.Sprintf("envHandler: %s", time.Now().Format("2006-01-02 15:04:05")))
-    vars := mux.Vars(r)
-    key := vars["key"]
-    value := os.Getenv(key)
-    if value == "" {
-        response := map[string]string{"key": key, "value": "NotFound"}
-        w.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(w).Encode(response)
-        return
-    }
-    response := map[string]string{"key": key, "value": value}
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
@@ -61,9 +44,18 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
         http.Error(w, fmt.Sprintf("{\"error\": \"%s\"}", err.Error()), http.StatusBadRequest)
         return
     }
+
+    api_host := os.Getenv(fmt.Sprintf("%s_HOST", forward.Api))
+    api_port := os.Getenv(fmt.Sprintf("%s_PORT", forward.Api))
+    
+    if api_port == "" || api_host == "" {
+        fmt.Println(fmt.Sprintf("{\"apiHandler\": \"Invalid api %s\"}", forward.Api))
+        http.Error(w, "Invalid port", http.StatusBadRequest)
+        return
+    }
     
     client := &http.Client{}
-    url := fmt.Sprintf("%s:%s/auth%s", forward.Url, forward.Port, forward.Path)
+    url := fmt.Sprintf("http://%s:%s/auth%s", api_host, api_port, forward.Path)
     
     fmt.Println(fmt.Sprintf("apiHandler: request to %s :  %s", url, time.Now().Format("2006-01-02 15:04:05")))
     
@@ -143,7 +135,6 @@ func main() {
 
     // Define the routes
     r.HandleFunc("/health", healthHandler).Methods("GET")
-    r.HandleFunc("/env/{key}", getEnvHandler).Methods("GET")
     r.HandleFunc("/api", apiHandler).Methods("POST")
 
     // Start the server

@@ -4,4 +4,4 @@ build:
 	sudo cp kubefs /usr/local/bin
 
 release-api:
-	zip -r kubefs-api.zip kubefs-api -x "kubefs-api/Dockerfile" "kubefs-api/docker-compose.yaml" "kubefs-api/.dockerignore"	
+	zip -r kubefs-api.zip kubefs-api -x "kubefs-api/Dockerfile" "kubefs-api/docker-compose.yaml" "kubefs-api/.dockerignore"	"kubefs-api/Makefile"

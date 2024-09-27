@@ -111,10 +111,6 @@ build(){
     env_vars=$(yq e '.resources[].docker[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
-    if [ -f $CURRENT_DIR/$name/".env" ]; then
-        env_vars+=($(cat $CURRENT_DIR/$name/".env"))
-    fi
-
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
     client_secret=$(yq e '.project.client-secret' $CURRENT_DIR/$NAME/scaffold.yaml)
 
@@ -131,16 +127,15 @@ build(){
                         -i -e "s/{{ENTRY}}/$entry/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
                             
-                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore && echo "venv/" >> .dockerignore && echo "__pycache__" >> .dockerignore)
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore && echo "venv/" >> .dockerignore && echo "__pycache__" >> .dockerignore)
                     ;;
                 "go")
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-dockerfile.conf -O $CURRENT_DIR/$NAME/Dockerfile                
                     sed -i -e "s/{{PORT}}/${port}/" \
                         -i -e "s/{{NAME}}/$NAME/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
-                    
-                            
-                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+                      
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
                 *)
                     wget https://raw.githubusercontent.com/rahulmedicharla/kubefs/main/scripts/templates/local-api/template-api-dockerfile-express.conf -O $CURRENT_DIR/$NAME/Dockerfile
@@ -149,8 +144,7 @@ build(){
                         -i -e "s/{{CMD}}/\"node\", \"${entry}\"/" \
                         "$CURRENT_DIR/$NAME/Dockerfile"
 
-        
-                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+                    (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
                     ;;
             esac
 
@@ -174,7 +168,6 @@ build(){
             for env in "${env_vars[@]}"; do
                 yq e ".services.api.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done
-            
             yq e ".services.api.environment += [\"CLIENT_ID=$sanitized_name\", \"CLIENT_SECRET=$client_secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
 
             ;;  
@@ -206,7 +199,7 @@ build(){
             done
             yq e ".services.backend.environment += [\"CLIENT_ID=$sanitized_name\", \"CLIENT_SECRET=$client_secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
 
-            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo ".env" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
+            (cd $CURRENT_DIR/$NAME && touch .dockerignore && echo "Dockerfile" > .dockerignore && echo "node_modules/" >> .dockerignore && echo "docker-compose.yaml" >> .dockerignore && echo "scaffold.yaml" >> .dockerignore && echo "deploy/" >> .dockerignore)
             ;;
         "db")
             case $framework in 
