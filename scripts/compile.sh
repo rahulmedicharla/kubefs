@@ -174,6 +174,7 @@ build(){
             for env in "${env_vars[@]}"; do
                 yq e ".services.api.environment += [\"$env\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
             done
+            
             yq e ".services.api.environment += [\"CLIENT_ID=$sanitized_name\", \"CLIENT_SECRET=$client_secret\"]" $CURRENT_DIR/$NAME/docker-compose.yaml -i
 
             ;;  
