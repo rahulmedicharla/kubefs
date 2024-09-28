@@ -181,7 +181,7 @@ create_helper_func() {
     print_success "$NAME created successfully!"
     echo ""
     echo "To start the project use 'kubefs run $NAME'"
-    print_warning "To utilize environment variables, populate a .env file in the $NAME directory && if frontend, consume then using fetch('/env/{VARIABLE_NAME}')"
+    print_warning "To utilize environment variables, populate a .env file in the $NAME directory - prefix with 'KUBEFS_SECRET_' to be stored as a Kubernetes secret at runtime"
     echo ""
 
     return 0
