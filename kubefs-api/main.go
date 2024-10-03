@@ -27,6 +27,21 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(response)
 }
 
+func envHandler(w http.ResponseWriter, r *http.Request) {
+    vars := mux.Vars(r)
+    key := vars["key"]
+    value := os.Getenv(key)
+
+    if value == "" {
+        http.Error(w, fmt.Sprintf("{\"error\": \"Key %s not found\"}", key), http.StatusBadRequest)
+        return
+    }
+
+    response := map[string]string{key: value}
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
+}
+
 func apiHandler(w http.ResponseWriter, r *http.Request) {
     fmt.Println(fmt.Sprintf("apiHandler: %s", time.Now().Format("2006-01-02 15:04:05")))
     body, err := ioutil.ReadAll(r.Body)
@@ -136,6 +151,7 @@ func main() {
     // Define the routes
     r.HandleFunc("/health", healthHandler).Methods("GET")
     r.HandleFunc("/api", apiHandler).Methods("POST")
+    r.HandleFunc("/env/{key}", envHandler).Methods("GET")
 
     // Start the server
     fmt.Println("Server is running on port 5000")

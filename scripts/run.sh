@@ -66,8 +66,8 @@ run_all(){
                 return 1
             fi
 
-            if [ -f $CURRENT_DIR/$name/".env" ]; then
-                env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+            if [ -f $CURRENT_DIR/$name/".secrets" ]; then
+                env_vars+=($(cat $CURRENT_DIR/$name/".secrets"))
             fi
         done
 
@@ -195,8 +195,8 @@ run_helper(){
         env_vars=$(yq e '.resources[].local[]' $CURRENT_DIR/manifest.yaml)
         IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
-        if [ -f $CURRENT_DIR/$name/".env" ]; then
-            env_vars+=($(cat $CURRENT_DIR/$name/".env"))
+        if [ -f $CURRENT_DIR/$name/".secrets" ]; then
+            env_vars+=($(cat $CURRENT_DIR/$name/".secrets"))
         fi
 
         (cd $CURRENT_DIR/kubefs-api && rm .env 2>/dev/null && touch .env)
