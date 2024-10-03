@@ -58,8 +58,8 @@ helmify(){
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
     secrets=()
-    if [ -f $CURRENT_DIR/$NAME/".env" ]; then
-        secrets+=($(cat $CURRENT_DIR/$NAME/".env"))
+    if [ -f "$CURRENT_DIR/$NAME/.secrets" ]; then
+        secrets+=($(cat $CURRENT_DIR/$NAME/".secrets"))
     fi
 
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )

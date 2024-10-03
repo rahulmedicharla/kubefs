@@ -111,6 +111,10 @@ build(){
     env_vars=$(yq e '.resources[].docker[]' $CURRENT_DIR/manifest.yaml)
     IFS=$'\n' read -r -d '' -a env_vars <<< "$env_vars"
 
+    if [ -f "$CURRENT_DIR/$NAME/.secrets" ]; then
+        env_vars+=($(cat $CURRENT_DIR/$NAME/".secrets"))
+    fi
+
     sanitized_name=$(echo $NAME | tr '[:lower:]' '[:upper:]' | tr '-' '_' )
     client_secret=$(yq e '.project.client-secret' $CURRENT_DIR/$NAME/scaffold.yaml)
 
