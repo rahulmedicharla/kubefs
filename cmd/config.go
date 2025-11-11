@@ -108,6 +108,87 @@ example:
 	},
 }
 
+var azureCmd = &cobra.Command{
+	Use:   "azure",
+	Short: "Configure Azure settings",
+	Long: `Configure Azure settings for kubefs
+example: 
+	kubefs config azure --flags
+	`,
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := utils.ValidateProject(); err != nil {
+			utils.PrintError(err)
+			return
+		}
+
+		remove, err := cmd.Flags().GetBool("remove")
+		if err != nil {
+			utils.PrintError(fmt.Errorf("error reading remove flag: %v", err))
+			return
+		}
+
+		if remove {
+			// Revoke az authentication
+			err = utils.RunCommand("az logout", true, true)
+			if err != nil {
+				utils.PrintError(fmt.Errorf("error revoking Azure authentication: %v", err))
+				return
+			}
+
+			err = utils.RemoveCloudConfig(&utils.ManifestData, "azure")
+			if err != nil {
+				utils.PrintError(fmt.Errorf("error removing Azure configuration from manifest: %v", err))
+				return
+			}
+
+			utils.PrintInfo("Azure authentication revoked successfully")
+		} else {
+
+			// Authenticate and enable with Azure using az CLI
+			err = utils.AuthenticateAzure()
+			if err != nil {
+				utils.PrintError(fmt.Errorf("error authenticating with Azure: %v", err))
+				return
+			}
+
+			// gather configuration details
+			var subscription string
+			ctx := context.Background()
+
+			err = utils.ReadInput("Enter Azure Subscription Id: ", &subscription)
+			if err != nil {
+				utils.PrintError(fmt.Errorf("error reading Azure Subscription Id: %v", err))
+				return
+			}
+
+			// Setup GCP
+			resourceGroup, region, err := utils.SetupAzure(ctx, subscription)
+			if err != nil {
+				utils.PrintError(err)
+				return
+			}
+
+			// Save GCP configuration
+			cloudConfig := types.CloudConfig{
+				SubscriptionId: subscription,
+				ResourceGroup:  *resourceGroup,
+				Region:         *region,
+				ClusterNames:   make([]string, 0),
+			}
+
+			// Add new config
+			err = utils.UpdateCloudConfig(&utils.ManifestData, "azure", &cloudConfig)
+			if err != nil {
+				utils.PrintError(fmt.Errorf("error saving Azure configuration to manifest: %v", err))
+				return
+			}
+
+			utils.PrintInfo("Azure Project configured successfully")
+
+		}
+	},
+}
+
 var dockerCmd = &cobra.Command{
 	Use:   "docker",
 	Short: "Configure Docker settings",
@@ -212,6 +293,7 @@ func init() {
 	configCmd.AddCommand(listCmd)
 	configCmd.AddCommand(dockerCmd)
 	configCmd.AddCommand(gcpCmd)
+	configCmd.AddCommand(azureCmd)
 
 	configCmd.PersistentFlags().BoolP("remove", "r", false, "remove the associated configuration")
 }

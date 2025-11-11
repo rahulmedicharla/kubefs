@@ -38,11 +38,13 @@ type Addon struct {
 }
 
 type CloudConfig struct {
-	ProjectId    string   `yaml:"project_id,omitempty"`
-	ProjectName  string   `yaml:"project_name,omitempty"`
-	Region       string   `yaml:"region,omitempty"`
-	ClusterNames []string `yaml:"cluster_names,omitempty"`
-	MainCluster  string   `yaml:"main_cluster,omitempty"`
+	ProjectId      string   `yaml:"project_id,omitempty"`
+	ProjectName    string   `yaml:"project_name,omitempty"`
+	Region         string   `yaml:"region,omitempty"`
+	ClusterNames   []string `yaml:"cluster_names,omitempty"`
+	MainCluster    string   `yaml:"main_cluster,omitempty"`
+	SubscriptionId string   `yaml:"subscription_id,omitempty"`
+	ResourceGroup  string   `yaml:"resource_group,omitempty"`
 }
 
 type ApiResponse struct {
