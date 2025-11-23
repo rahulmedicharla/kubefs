@@ -3,10 +3,15 @@ package utils
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/containerservice/armcontainerservice"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
+	"github.com/rahulmedicharla/kubefs/types"
 )
 
 func AuthenticateAzure() error {
@@ -21,6 +26,10 @@ func AuthenticateAzure() error {
 	}
 
 	return nil
+}
+
+func GetAzureClusterContext(config *types.CloudConfig) error {
+	return RunCommand(fmt.Sprintf("az aks get-credentials --resource-group %s --name %s --overwrite-existing", config.ResourceGroup, config.MainCluster), true, true)
 }
 
 func VerifyAzureSubscription(ctx context.Context, cred *azidentity.DefaultAzureCredential, subscription string) error {
@@ -92,6 +101,163 @@ func EnableAzureProviders(ctx context.Context, cred *azidentity.DefaultAzureCred
 		if err != nil {
 			return fmt.Errorf("failed to register %s: %w", providerNamespace, err)
 		}
+	}
+
+	return nil
+}
+
+func StartAzureCluster(config *types.CloudConfig, clusterName string) error {
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return err
+	}
+
+	client, err := armcontainerservice.NewManagedClustersClient(config.SubscriptionId, cred, nil)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	poller, err := client.BeginStart(ctx, config.ResourceGroup, clusterName, nil)
+	if err != nil {
+		return err
+	}
+
+	var resp *http.Response
+	for !poller.Done() {
+		resp, err = poller.Poll(ctx)
+		if err != nil {
+			return err
+		}
+
+		PrintWarning(fmt.Sprintf("Waiting for Azure cluster starting to complete... %s", resp.Status))
+		time.Sleep(30 * time.Second)
+	}
+
+	return nil
+}
+
+func PauseAzureCluster(config *types.CloudConfig, clusterName string) error {
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return err
+	}
+
+	client, err := armcontainerservice.NewManagedClustersClient(config.SubscriptionId, cred, nil)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	poller, err := client.BeginStop(ctx, config.ResourceGroup, clusterName, nil)
+	if err != nil {
+		return err
+	}
+
+	var resp *http.Response
+	for !poller.Done() {
+		resp, err = poller.Poll(ctx)
+		if err != nil {
+			return err
+		}
+
+		PrintWarning(fmt.Sprintf("Waiting for Azure cluster pausing to complete... %s", resp.Status))
+		time.Sleep(30 * time.Second)
+	}
+
+	return nil
+}
+
+func ProvisionAzureCluster(config *types.CloudConfig, clusterName string) error {
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return err
+	}
+
+	client, err := armcontainerservice.NewManagedClustersClient(config.SubscriptionId, cred, nil)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	poller, err := client.BeginCreateOrUpdate(ctx,
+		config.ResourceGroup,
+		clusterName,
+		armcontainerservice.ManagedCluster{
+			Location: to.Ptr(config.Region),
+			Identity: &armcontainerservice.ManagedClusterIdentity{
+				Type: to.Ptr(armcontainerservice.ResourceIdentityTypeSystemAssigned),
+			},
+			Properties: &armcontainerservice.ManagedClusterProperties{
+				AgentPoolProfiles: []*armcontainerservice.ManagedClusterAgentPoolProfile{
+					{
+						Name:   to.Ptr("nodepool1"),
+						Count:  to.Ptr[int32](1),
+						VMSize: to.Ptr("standard_dc2as_v5"), // Choose a standard VM size
+						Mode:   to.Ptr(armcontainerservice.AgentPoolModeSystem),
+						OSType: to.Ptr(armcontainerservice.OSTypeLinux),
+					},
+				},
+				DNSPrefix: to.Ptr(clusterName),
+			},
+		},
+		nil,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	var resp *http.Response
+	for !poller.Done() {
+		resp, err = poller.Poll(ctx)
+		if err != nil {
+			return err
+		}
+
+		PrintWarning(fmt.Sprintf("Waiting for Azure cluster creation to complete... %s", resp.Status))
+		time.Sleep(30 * time.Second)
+	}
+
+	PrintInfo(fmt.Sprintf("Azure cluster [%s] created successfully... Installing dependencies...", clusterName))
+
+	commands := []string{
+		fmt.Sprintf("az aks get-credentials --resource-group %s --name %s --overwrite-existing", config.ResourceGroup, clusterName),
+		"helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx",
+		"helm repo update",
+		"helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --create-namespace --namespace ingress-nginx --set controller.service.annotations.service.beta.kubernetes.io/azure-load-balancer-health-probe-request-path=/healthz --set controller.service.externalTrafficPolicy=Local > /dev/null",
+		"kubectl wait --for=condition=available --timeout=5m deployment/ingress-nginx-controller -n ingress-nginx",
+	}
+
+	return RunMultipleCommands(commands, true, true)
+}
+
+func DeleteAzureCluster(config *types.CloudConfig, clusterName string) error {
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return err
+	}
+
+	client, err := armcontainerservice.NewManagedClustersClient(config.SubscriptionId, cred, nil)
+	if err != nil {
+		return err
+	}
+
+	ctx := context.Background()
+	poller, err := client.BeginDelete(ctx, config.ResourceGroup, clusterName, nil)
+	if err != nil {
+		return err
+	}
+
+	var resp *http.Response
+	for !poller.Done() {
+		resp, err = poller.Poll(ctx)
+		if err != nil {
+			return err
+		}
+
+		PrintWarning(fmt.Sprintf("Waiting for Azure cluster deletion to complete... %s", resp.Status))
+		time.Sleep(30 * time.Second)
 	}
 
 	return nil

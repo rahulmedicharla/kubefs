@@ -71,4 +71,4 @@ var FRAMEWORKS = map[string]maps.Set[string]{
 	"addons":   maps.NewSet("auth", "gateway"),
 }
 
-var TARGETS = maps.NewSet("minikube", "gcp")
+var TARGETS = maps.NewSet("minikube", "gcp", "azure")

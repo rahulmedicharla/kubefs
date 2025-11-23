@@ -172,6 +172,12 @@ example:
 		case "gcp":
 			utils.PrintWarning("gcp autopilot clusters don't support pausing/stopping")
 			return
+		case "azure":
+			err = utils.PauseAzureCluster(config, clusterName)
+			if err != nil {
+				utils.PrintError(err)
+				return
+			}
 		}
 
 		utils.PrintInfo(fmt.Sprintf("Paused cluster [%s] in target %s", clusterName, target))
@@ -233,6 +239,12 @@ example:
 		case "gcp":
 			utils.PrintWarning("gcp autopilot clusters don't support starting clusters")
 			return
+		case "azure":
+			err = utils.StartAzureCluster(config, clusterName)
+			if err != nil {
+				utils.PrintError(err)
+				return
+			}
 		}
 
 		utils.PrintInfo(fmt.Sprintf("Started cluster [%s] in target %s", clusterName, target))
@@ -294,6 +306,12 @@ example:
 		case "gcp":
 			// delete gcp cluster
 			err = utils.DeleteGCPCluster(config, clusterName)
+			if err != nil {
+				utils.PrintError(err)
+				return
+			}
+		case "azure":
+			err = utils.DeleteAzureCluster(config, clusterName)
 			if err != nil {
 				utils.PrintError(err)
 				return
@@ -367,17 +385,16 @@ example:
 		case "minikube":
 			// provision minikube cluster
 			err = utils.ProvisionMinikubeCluster(clusterName)
-			if err != nil {
-				utils.PrintError(err)
-				return
-			}
 		case "gcp":
 			// provision gcp cluster
 			err = utils.ProvisionGcpCluster(config, clusterName)
-			if err != nil {
-				utils.PrintError(err)
-				return
-			}
+		case "azure":
+			// provision azure cluster
+			err = utils.ProvisionAzureCluster(config, clusterName)
+		}
+		if err != nil {
+			utils.PrintError(err)
+			return
 		}
 		// update manifest
 		config.ClusterNames = append(config.ClusterNames, clusterName)
@@ -403,6 +420,6 @@ func init() {
 	clusterCmd.AddCommand(mainCmd)
 	clusterCmd.AddCommand(listClusterCmd)
 
-	clusterCmd.PersistentFlags().StringP("target", "t", "minikube", "target environment to deploy to ['minikube', 'gcp']")
+	clusterCmd.PersistentFlags().StringP("target", "t", "minikube", "target environment to deploy to ['minikube', 'gcp', 'azure']")
 
 }
