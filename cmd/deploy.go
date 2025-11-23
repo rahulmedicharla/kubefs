@@ -56,6 +56,13 @@ func deployToTarget(target string, commands []string) error {
 		}
 
 		return utils.RunMultipleCommands(commands, true, true)
+	case "azure":
+		err = utils.GetAzureClusterContext(config)
+		if err != nil {
+			return err
+		}
+
+		return utils.RunMultipleCommands(commands, true, true)
 	}
 
 	return nil

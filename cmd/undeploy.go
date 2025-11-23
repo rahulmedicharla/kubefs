@@ -55,6 +55,13 @@ func undeployFromTarget(target string, commands []string) error {
 
 		// deploy specified commands to GCP cluster
 		return utils.RunMultipleCommands(commands, true, true)
+	case "azure":
+		err = utils.GetAzureClusterContext(config)
+		if err != nil {
+			return err
+		}
+
+		return utils.RunMultipleCommands(commands, true, true)
 	}
 
 	return nil
